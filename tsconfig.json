@@ -18,8 +18,9 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".", // Add this
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./*"] // Add this mapping
     }
   },
   "include": [
