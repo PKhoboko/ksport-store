@@ -1,48 +1,84 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface Shoe {
-    id: number; name: string; brand: string; price: number;
-    image_url: string; description: string; stock: number;
+    id: number;
+    name: string;
+    brand: string;
+    price: number;
+    image_url: string;
+    quantity?: number;
+    stock: number;
+    description: string;
+    category: string;
+    sizes: number[];
 }
 
-// YOUR ACTUAL STOCK - Edit this to go live tomorrow
-export const MOCK_INVENTORY: Shoe[] = [
-    {
-        id: 1,
-        name: "Oxford Elegance",
-        brand: "Barker",
-        price: 3499,
-        image_url: "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800",
-        description: "Premium handcrafted leather.",
-        stock: 5
-    },
-    {
-        id: 2,
-        name: "Derby Classic",
-        brand: "Loake",
-        price: 2899,
-        image_url: "https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=800",
-        description: "Goodyear welted construction.",
-        stock: 10
-    }
-];
-
-interface CartStore {
+interface GlobalStore {
     cart: Shoe[];
+    user: { email: string; name: string } | null;
+    toast: string | null;
+
+    // Actions
     addToCart: (shoe: Shoe) => void;
     removeFromCart: (id: number) => void;
     clearCart: () => void;
+    login: (email: string) => void;
+    logout: () => void;
+    setToast: (msg: string | null) => void;
 }
 
-export const useCart = create<CartStore>()(
+export const useStore = create<GlobalStore>()(
     persist(
         (set) => ({
             cart: [],
-            addToCart: (shoe) => set((state) => ({ cart: [...state.cart, shoe] })),
-            removeFromCart: (id) => set((state) => ({ cart: state.cart.filter((s) => s.id !== id) })),
-            clearCart: () => set({ cart: [] }),
+            user: null,
+            toast: null,
+
+            addToCart: (shoe) => set((state) => {
+                const exists = state.cart.find((item) => item.id === shoe.id);
+
+                if (exists) {
+                    return { toast: `${shoe.name.toUpperCase()} IS ALREADY IN BAG` };
+                }
+
+                return {
+                    cart: [...state.cart, shoe],
+                    toast: `ADDED ${shoe.name.toUpperCase()} TO BAG`
+                };
+            }),
+
+            removeFromCart: (id) => set((state) => ({
+                cart: state.cart.filter((item) => item.id !== id),
+                toast: "REMOVED FROM BAG"
+            })),
+
+            clearCart: () => set({ cart: [], toast: null }),
+
+            login: (email) => set({
+                user: { email, name: email.split('@')[0] },
+                toast: "WELCOME"
+            }),
+
+            logout: () => set({ user: null, cart: [], toast: "SIGNED OUT" }),
+
+            setToast: (msg) => set({ toast: msg }),
         }),
-        { name: 'cart-storage' }
+        {
+            name: 'zikiano-v1',
+            // FIX: This prevents "window is not defined" during Next.js build
+            storage: createJSONStorage(() => {
+                if (typeof window !== 'undefined') {
+                    return window.localStorage;
+                } else {
+                    // Return a dummy storage for the server-side build phase
+                    return {
+                        getItem: () => null,
+                        setItem: () => {},
+                        removeItem: () => {},
+                    };
+                }
+            }),
+        }
     )
 );

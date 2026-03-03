@@ -1,79 +1,98 @@
 "use client";
 import { useState } from 'react';
-import { useAuth } from '@/lib/auth-mock';
+import { supabase } from '@/lib/superbase';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/lib/store';
+import Link from 'next/link'; // Added for navigation to Register and Forgot Password
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { login } = useAuth();
-    const router = useRouter();
+    const [loading, setLoading] = useState(false);
 
-    const handleManualLogin = (e: React.FormEvent) => {
+    const router = useRouter();
+    const login = useStore((state) => state.login);
+
+    const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
-        // For now: Any password works to let you in
-        if (email && password) {
-            login(email);
+        setLoading(true);
+
+        // 1. Authenticate with Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
+            alert(error.message);
+            setLoading(false);
+            return;
+        }
+
+        // 2. Update global state
+        if (data.user) {
+            login(data.user.email!);
+
+            // 3. Redirect to home
             router.push('/');
+            router.refresh();
         }
     };
 
     return (
-        <div className="min-h-[90vh] flex items-center justify-center bg-gray-50 px-6 py-12">
-            <div className="max-w-md w-full bg-white p-8 md:p-12 rounded-[2rem] shadow-xl border border-gray-100">
-                <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black italic tracking-tighter mb-2">ÉLÉGANCE</h1>
-                    <p className="text-zinc-400 text-sm font-medium uppercase tracking-widest">Member Access</p>
-                </div>
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 px-6">
+            <div className="max-w-md w-full bg-white p-10 rounded-[2.5rem] shadow-xl border border-zinc-100">
+                <h1 className="text-3xl font-black italic mb-8 text-center uppercase tracking-tighter">ZIKIANO LOGIN</h1>
 
-                {/* 1. Google Auth (UI Only) */}
-                <button
-                    onClick={() => alert("Google Auth requires Supabase. Using Manual Login for now.")}
-                    className="w-full flex items-center justify-center gap-3 border border-gray-200 py-4 rounded-xl font-bold hover:bg-gray-50 transition-all mb-6"
-                >
-                    <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-                    Continue with Google
-                </button>
-
-                <div className="relative mb-8 text-center">
-                    <hr className="border-gray-100" />
-                    <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-[10px] font-bold text-gray-300 uppercase">Or Manual</span>
-                </div>
-
-                {/* 2. Manual Login Form */}
-                <form onSubmit={handleManualLogin} className="space-y-4">
-                    <div>
-                        <label className="text-[10px] font-bold uppercase ml-1 text-gray-400">Email Address</label>
+                <form onSubmit={handleSignIn} className="space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-widest ml-2 text-zinc-400">Email Address</label>
                         <input
                             type="email"
-                            required
-                            className="w-full p-4 mt-1 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-black outline-none transition-all"
-                            placeholder="you@example.com"
+                            placeholder="Email"
+                            className="w-full p-4 bg-zinc-50 rounded-xl border-none focus:ring-2 focus:ring-black outline-none transition-all"
+                            value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            required
                         />
                     </div>
-                    <div>
-                        <label className="text-[10px] font-bold uppercase ml-1 text-gray-400">Password</label>
+
+                    <div className="space-y-1">
+                        <div className="flex justify-between items-center px-2">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Password</label>
+                            {/* FORGOT PASSWORD LINK */}
+                            <Link href="/forgot-password" className="text-[10px] font-bold uppercase text-zinc-400 hover:text-black transition-colors underline decoration-zinc-200 underline-offset-4">
+                                Forgot Password?
+                            </Link>
+                        </div>
                         <input
                             type="password"
-                            required
-                            className="w-full p-4 mt-1 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-black outline-none transition-all"
                             placeholder="••••••••"
+                            className="w-full p-4 bg-zinc-50 rounded-xl border-none focus:ring-2 focus:ring-black outline-none transition-all"
+                            value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            required
                         />
                     </div>
 
                     <button
                         type="submit"
-                        className="w-full bg-black text-white py-5 rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-lg"
+                        disabled={loading}
+                        className="w-full bg-black text-white py-5 rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all disabled:opacity-50 mt-4"
                     >
-                        Sign In
+                        {loading ? "VERIFYING..." : "SIGN IN"}
                     </button>
                 </form>
 
-                <p className="mt-8 text-center text-xs text-gray-400">
-                    Don't have an account? <span className="text-black font-bold cursor-pointer hover:underline">Register Now</span>
-                </p>
+                {/* REGISTER LINK SECTION */}
+                <div className="mt-8 pt-6 border-t border-zinc-100 text-center">
+                    <p className="text-sm text-zinc-500">
+                        New to Zikiano?{" "}
+                        <Link href="/register" className="text-black font-black underline hover:text-zinc-600 transition-colors">
+                            JOIN THE CLUB
+                        </Link>
+                    </p>
+                </div>
             </div>
         </div>
     );
