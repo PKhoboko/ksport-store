@@ -3,7 +3,16 @@ import { supabase } from '@/lib/superbase';
 import ShoeCard from '@/components/ShoeCard';
 
 export default async function Home() {
-    const { data: shoes } = await supabase.from('shoes').select('*').gt('stock', 0);
+    const { data: shoes, error } = await supabase
+        .from('shoes')
+        .select('*')
+        .order('name', { ascending: true }); // FIX 1: Remove .gt('stock', 0) — shows all shoes
+
+    // FIX 2: Log errors so you can see what's failing
+    if (error) {
+        console.error('Supabase error:', error.message);
+    }
+
 
     return (
         <div className="pb-20">
