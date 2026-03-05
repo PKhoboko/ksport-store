@@ -26,8 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <div>
                     <h4 className="font-black text-xs uppercase tracking-[0.2em] mb-6 text-zinc-900">Operations</h4>
                     <div className="space-y-2 text-sm text-zinc-500">
-                        <p>Hout Bay, Cape Town</p>
-                        <p className="hover:text-black transition-colors">Contact: +27 21 000 0000</p>
+                        <p>Bellville, Cape Town</p>
+                        <p className="hover:text-black transition-colors">Contact: +27 62 420 3360</p>
+                        <p className="hover:text-black transition-colors">Email: info@zikiano.com</p>
                     </div>
                 </div>
 
@@ -36,18 +37,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 text-left md:text-right leading-loose">
                         Website Designed & Engineered by
                         <br/>
-                        <span className="text-black text-xs font-black">Neria Solutions</span>
-                    </div>
+
+                      <a  href="https://www.neriasolutions.co.za"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-black text-xs font-black hover:underline"
+                        >
+                        Neria Solutions
+                    </a>
                 </div>
             </div>
+        </div>
 
-            <div
-                className="max-w-7xl mx-auto mt-20 pt-8 border-t border-zinc-200 flex justify-between items-center text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
-                <p>© 2026 ZIKIANO ZA</p>
-                <div className="flex gap-6">
-                    <span>Privacy</span>
-                    <span>Terms</span>
-                </div>
+        <div
+            className="max-w-7xl mx-auto mt-20 pt-8 border-t border-zinc-200 flex justify-between items-center text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+            <p>© 2026 ZIKIANO ZA</p>
+            <div className="flex gap-6">
+                <span>Privacy</span>
+                <span>Terms</span>
+            </div>
             </div>
         </footer>
         </body>
