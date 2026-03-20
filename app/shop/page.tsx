@@ -1,7 +1,8 @@
 import { supabase } from "@/lib/superbase";
+export const revalidate = 0;
 
 export default async function ShopPage() {
-    const { data: products } = await supabase.from("products").select("*");
+    const { data: products, error } = await supabase.from("shoes").select("*");
 
     return (
         <div className="container">

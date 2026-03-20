@@ -88,7 +88,7 @@ export default function LoginPage() {
                 <div className="mt-8 pt-6 border-t border-zinc-100 text-center">
                     <p className="text-sm text-zinc-500">
                         New to Zikiano?{" "}
-                        <Link href="/register" className="text-black font-black underline hover:text-zinc-600 transition-colors">
+                        <Link href="/register-details" className="text-black font-black underline hover:text-zinc-600 transition-colors">
                             JOIN THE CLUB
                         </Link>
                     </p>
