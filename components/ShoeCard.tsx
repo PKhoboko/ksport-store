@@ -35,7 +35,12 @@ function StatusBadge({ status }: { status: AvailStatus }) {
 function ColourDot({ variant, selected, onClick }: { variant: ColourVariant; selected: boolean; onClick: () => void; }) {
     const soldOut = deriveStatus(variant) === 'sold_out';
     return (
-        <button onClick={onClick} className={`relative flex-shrink-0 rounded-full border-2 transition-all w-5 h-5 sm:w-6 sm:h-6 ${selected ? 'border-zinc-900 scale-110 shadow-md' : 'border-zinc-100'} ${soldOut ? 'opacity-30' : ''}`} style={{ backgroundColor: variant.colourHex }}>
+        <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            className={`relative flex-shrink-0 rounded-full border-2 transition-all w-5 h-5 sm:w-6 sm:h-6 ${selected ? 'border-zinc-900 scale-110 shadow-md' : 'border-zinc-100'} ${soldOut ? 'opacity-30' : ''}`}
+            style={{ backgroundColor: variant.colourHex }}
+        >
             {soldOut && <span className="absolute inset-0 flex items-center justify-center"><span className="block w-px h-full bg-zinc-400 rotate-45" /></span>}
         </button>
     );
@@ -48,7 +53,6 @@ function ShoeCardContent({ group }: { group: ModelGroup }) {
     const [colourIdx, setColourIdx] = useState(0);
     const [viewIdx, setViewIdx] = useState(0);
     const [selectedSize, setSelectedSize] = useState<number | null>(null);
-    const [swatchOpen, setSwatchOpen] = useState(false);
     const [added, setAdded] = useState(false);
 
     useEffect(() => { setMounted(true); }, []);
@@ -60,7 +64,8 @@ function ShoeCardContent({ group }: { group: ModelGroup }) {
     const views = variant.views;
     const currentView = views[viewIdx] ?? views[0];
 
-    const handleAdd = () => {
+    const handleAdd = (e: React.MouseEvent) => {
+        e.stopPropagation();
         if (!selectedSize) return alert("Please select a size");
         addToCart({
             id: currentView?.id ?? String(Date.now()),
@@ -71,33 +76,41 @@ function ShoeCardContent({ group }: { group: ModelGroup }) {
         setAdded(true); setTimeout(() => setAdded(false), 2000);
     };
 
-    return (
-        <div className="group/card bg-white rounded-2xl overflow-hidden border border-zinc-100 flex flex-col h-full shadow-sm">
+    const nextView = (e?: React.MouseEvent) => { e?.stopPropagation(); setViewIdx(i => (i + 1) % views.length); };
+    const prevView = (e?: React.MouseEvent) => { e?.stopPropagation(); setViewIdx(i => (i - 1 + views.length) % views.length); };
 
-            {/* ── IMAGE SECTION: Optimized for Small Mobile View ── */}
-            <div className="aspect-[4/5] bg-zinc-50 relative overflow-hidden touch-none">
+    return (
+        <div className="group/card bg-white rounded-2xl overflow-hidden border border-zinc-100 flex flex-col h-full shadow-sm hover:shadow-md transition-shadow">
+
+            {/* ── IMAGE SECTION ── */}
+            <div className="aspect-[4/5] bg-zinc-50 relative overflow-hidden">
                 {views.map((v, i) => (
                     <img
                         key={v.id}
                         src={v.imageUrl}
                         alt={group.modelName}
-                        // p-6 ensures the image stays small and centered on mobile
                         className="absolute inset-0 w-full h-full object-contain p-6 transition-all duration-500"
-                        style={{ opacity: i === viewIdx ? 1 : 0, zIndex: i === viewIdx ? 10 : 0 }}
+                        style={{ opacity: i === viewIdx ? 1 : 0, zIndex: i === viewIdx ? 5 : 0 }}
                     />
                 ))}
 
-                {/* Mobile Tap Zones: Fixed "Black Block" Issue */}
-                <div className="absolute inset-0 z-20 flex sm:hidden">
-                    <div className="w-1/2 h-full bg-transparent" onClick={() => setViewIdx(i => (i - 1 + views.length) % views.length)} />
-                    <div className="w-1/2 h-full bg-transparent" onClick={() => setViewIdx(i => (i + 1) % views.length)} />
+                {/* Mobile-Only Tap Zones (Hidden on Desktop) */}
+                <div className="absolute inset-0 z-10 flex sm:hidden">
+                    <div className="w-1/2 h-full cursor-pointer" onClick={prevView} />
+                    <div className="w-1/2 h-full cursor-pointer" onClick={nextView} />
+                </div>
+
+                {/* Desktop-Only Arrows (Appear on Hover) */}
+                <div className="hidden sm:flex absolute inset-0 items-center justify-between px-2 z-20 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                    <button onClick={prevView} className="w-8 h-8 rounded-full bg-white/80 shadow flex items-center justify-center hover:bg-white text-zinc-800">‹</button>
+                    <button onClick={nextView} className="w-8 h-8 rounded-full bg-white/80 shadow flex items-center justify-center hover:bg-white text-zinc-800">›</button>
                 </div>
 
                 <div className="absolute top-2 right-2 z-30">
                     <StatusBadge status={status} />
                 </div>
 
-                {/* View Indicator */}
+                {/* View Dots */}
                 <div className="absolute bottom-3 left-0 right-0 z-30 flex justify-center gap-1">
                     {views.map((_, i) => (
                         <div key={i} className={`h-1 rounded-full transition-all ${i === viewIdx ? 'w-4 bg-black' : 'w-1 bg-zinc-300'}`} />
@@ -112,29 +125,31 @@ function ShoeCardContent({ group }: { group: ModelGroup }) {
                     <h3 className="text-xs sm:text-sm font-black text-zinc-900 uppercase tracking-tight line-clamp-1">{group.modelName}</h3>
                 </div>
 
-                {/* Mobile Colour Picker */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {/* Colour Selection */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar z-40">
                     {group.variants.map((v, i) => (
                         <ColourDot key={v.colourKey} variant={v} selected={i === colourIdx} onClick={() => {setColourIdx(i); setViewIdx(0);}} />
                     ))}
                 </div>
 
-                {/* Size Grid: Compact for Mobile */}
-                <div className="grid grid-cols-5 gap-1">
+                {/* Size Selection */}
+                <div className="grid grid-cols-5 gap-1 z-40">
                     {SIZES.slice(4, 14).map((s) => (
-                        <button key={s} onClick={() => setSelectedSize(s)}
-                                className={`py-1.5 rounded text-[9px] font-bold transition-all ${selectedSize === s ? 'bg-black text-white' : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'}`}>
+                        <button key={s} onClick={(e) => { e.stopPropagation(); setSelectedSize(s); }}
+                                className={`py-1.5 rounded text-[9px] font-bold transition-all ${selectedSize === s ? 'bg-black text-white shadow-inner' : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'}`}>
                             {s}
                         </button>
                     ))}
                 </div>
 
+                {/* Price & Action */}
                 <div className="mt-auto pt-2 border-t border-zinc-50 flex items-center justify-between">
                     <span className="font-black text-sm text-zinc-900">R{variant.salePrice}</span>
                     <button
+                        type="button"
                         onClick={handleAdd}
-                        className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${added ? 'bg-emerald-500 text-white' : 'bg-black text-white active:scale-95'}`}>
-                        {added ? 'Added' : 'Add'}
+                        className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all z-40 ${added ? 'bg-emerald-500 text-white' : 'bg-black text-white active:scale-95 hover:bg-zinc-800'}`}>
+                        {added ? 'Added' : 'Add to Bag'}
                     </button>
                 </div>
             </div>
