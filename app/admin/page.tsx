@@ -4,16 +4,25 @@ import { useState } from 'react';
 import { RefreshCw, CheckCircle, XCircle, SkipForward, ShieldAlert } from 'lucide-react';
 
 type SyncResult = {
-    inserted: string[];
-    skipped: string[];
-    failed: { name: string; reason: string }[];
+    // New route returns { summary, upserted, skipped, failed }
+    // We normalise to `inserted` for display
+    upserted?: string[];
+    inserted?: string[];   // keep for old route compatibility
+    skipped:   string[];
+    failed:    { file?: string; name?: string; reason: string }[];
+    summary?: {
+        total:    number;
+        upserted: number;
+        skipped:  number;
+        failed:   number;
+    };
 };
 
 export default function AdminPage() {
-    const [secret, setSecret] = useState('');
+    const [secret, setSecret]   = useState('');
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<SyncResult | null>(null);
-    const [error, setError] = useState('');
+    const [result, setResult]   = useState<SyncResult | null>(null);
+    const [error, setError]     = useState('');
 
     const handleSync = async () => {
         if (!secret) return;
@@ -22,7 +31,7 @@ export default function AdminPage() {
         setError('');
 
         try {
-            const res = await fetch('/api/sync-shoes', {
+            const res = await fetch('/admin/sync-shoes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ secret }),
@@ -35,12 +44,17 @@ export default function AdminPage() {
             } else {
                 setResult(data);
             }
-        } catch (e) {
+        } catch {
             setError('Network error — check your connection');
         } finally {
             setLoading(false);
         }
     };
+
+    // Normalise: new route uses `upserted`, old route used `inserted`
+    const inserted = result?.upserted ?? result?.inserted ?? [];
+    const skipped  = result?.skipped  ?? [];
+    const failed   = result?.failed   ?? [];
 
     return (
         <div className="min-h-screen bg-zinc-950 text-white px-6 py-16">
@@ -96,11 +110,20 @@ export default function AdminPage() {
 
                 {result && (
                     <div className="mt-6 space-y-4">
+
+                        {/* Summary strip */}
+                        {result.summary && (
+                            <p className="text-xs text-zinc-500 text-center font-mono">
+                                {result.summary.total} images found in GitHub
+                            </p>
+                        )}
+
+                        {/* Stat cards */}
                         <div className="grid grid-cols-3 gap-3">
                             {[
-                                { label: 'Inserted', count: result.inserted.length, color: 'text-emerald-400', bg: 'bg-emerald-950 border-emerald-900' },
-                                { label: 'Skipped', count: result.skipped.length, color: 'text-zinc-400', bg: 'bg-zinc-900 border-zinc-800' },
-                                { label: 'Failed', count: result.failed.length, color: 'text-red-400', bg: 'bg-red-950 border-red-900' },
+                                { label: 'Upserted', count: inserted.length, color: 'text-emerald-400', bg: 'bg-emerald-950 border-emerald-900' },
+                                { label: 'Skipped',  count: skipped.length,  color: 'text-zinc-400',    bg: 'bg-zinc-900 border-zinc-800'       },
+                                { label: 'Failed',   count: failed.length,   color: 'text-red-400',     bg: 'bg-red-950 border-red-900'         },
                             ].map(({ label, count, color, bg }) => (
                                 <div key={label} className={`${bg} border rounded-2xl p-4 text-center`}>
                                     <p className={`text-3xl font-black ${color}`}>{count}</p>
@@ -109,44 +132,54 @@ export default function AdminPage() {
                             ))}
                         </div>
 
-                        {result.inserted.length > 0 && (
+                        {/* Upserted list */}
+                        {inserted.length > 0 && (
                             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
                                 <div className="flex items-center gap-2 mb-4">
                                     <CheckCircle size={14} className="text-emerald-400" />
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Inserted</h3>
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                                        Upserted ({inserted.length})
+                                    </h3>
                                 </div>
-                                <ul className="space-y-2">
-                                    {result.inserted.map((name) => (
+                                <ul className="space-y-1 max-h-64 overflow-y-auto">
+                                    {inserted.map((name) => (
                                         <li key={name} className="text-sm text-zinc-300 font-mono">{name}</li>
                                     ))}
                                 </ul>
                             </div>
                         )}
 
-                        {result.failed.length > 0 && (
+                        {/* Failed list */}
+                        {failed.length > 0 && (
                             <div className="bg-zinc-900 border border-red-900 rounded-2xl p-6">
                                 <div className="flex items-center gap-2 mb-4">
                                     <XCircle size={14} className="text-red-400" />
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-red-400">Failed</h3>
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-red-400">
+                                        Failed ({failed.length})
+                                    </h3>
                                 </div>
-                                <ul className="space-y-2">
-                                    {result.failed.map((f) => (
-                                        <li key={f.name} className="text-sm text-red-300 font-mono">
-                                            {f.name} <span className="text-zinc-500">— {f.reason}</span>
+                                <ul className="space-y-2 max-h-64 overflow-y-auto">
+                                    {failed.map((f, i) => (
+                                        <li key={i} className="text-sm text-red-300 font-mono">
+                                            {f.file ?? f.name ?? '—'}
+                                            <span className="text-zinc-500"> — {f.reason}</span>
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                         )}
 
-                        {result.skipped.length > 0 && (
+                        {/* Skipped list */}
+                        {skipped.length > 0 && (
                             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
                                 <div className="flex items-center gap-2 mb-4">
                                     <SkipForward size={14} className="text-zinc-400" />
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Already in DB</h3>
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                                        Could Not Parse ({skipped.length})
+                                    </h3>
                                 </div>
                                 <ul className="space-y-1 max-h-48 overflow-y-auto">
-                                    {result.skipped.map((name) => (
+                                    {skipped.map((name) => (
                                         <li key={name} className="text-xs text-zinc-600 font-mono">{name}</li>
                                     ))}
                                 </ul>

@@ -9,25 +9,30 @@ type CartItem = {
 
 type CartStore = {
     items: CartItem[];
-    notification: string | null; // Added this
+    notification: string | null;
     addItem: (item: CartItem) => void;
     removeItem: (id: string) => void;
     clear: () => void;
-    setNotification: (message: string | null) => void; // Added this
+    setNotification: (message: string | null) => void;
 };
 
 export const useCart = create<CartStore>((set) => ({
     items: [],
-    notification: null, // Initial state
+    notification: null,
+
     addItem: (item) =>
         set((state) => ({
             items: [...state.items, item],
-            notification: `${item.name} added to cart!` // Optional: auto-set notification
+            // Optional: trigger notification automatically on add
+            notification: `Added ${item.name} to cart`,
         })),
+
     removeItem: (id) =>
         set((state) => ({
             items: state.items.filter((i) => i.id !== id),
         })),
+
     clear: () => set({ items: [] }),
-    setNotification: (message) => set({ notification: message }), // Implementation
+
+    setNotification: (message) => set({ notification: message }),
 }));

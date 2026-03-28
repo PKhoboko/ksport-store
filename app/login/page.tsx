@@ -1,9 +1,9 @@
 "use client";
 import { useState } from 'react';
 import { supabase } from '@/lib/superbase';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Added useSearchParams
 import { useStore } from '@/lib/store';
-import Link from 'next/link'; // Added for navigation to Register and Forgot Password
+import Link from 'next/link';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -13,11 +13,14 @@ export default function LoginPage() {
     const router = useRouter();
     const login = useStore((state) => state.login);
 
+    // --- 1. Fix SearchParams Logic ---
+    const searchParams = useSearchParams();
+    const nextPath = searchParams.get('redirect') || '/';
+
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
-        // 1. Authenticate with Supabase
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -29,12 +32,12 @@ export default function LoginPage() {
             return;
         }
 
-        // 2. Update global state
         if (data.user) {
             login(data.user.email!);
 
-            // 3. Redirect to home
-            router.push('/');
+            // --- 2. Dynamic Redirect ---
+            // If they came from /checkout, nextPath will be "/checkout"
+            router.push(nextPath);
             router.refresh();
         }
     };
@@ -60,7 +63,6 @@ export default function LoginPage() {
                     <div className="space-y-1">
                         <div className="flex justify-between items-center px-2">
                             <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Password</label>
-                            {/* FORGOT PASSWORD LINK */}
                             <Link href="/forgot-password" className="text-[10px] font-bold uppercase text-zinc-400 hover:text-black transition-colors underline decoration-zinc-200 underline-offset-4">
                                 Forgot Password?
                             </Link>
@@ -84,7 +86,6 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                {/* REGISTER LINK SECTION */}
                 <div className="mt-8 pt-6 border-t border-zinc-100 text-center">
                     <p className="text-sm text-zinc-500">
                         New to Zikiano?{" "}

@@ -1,7 +1,7 @@
-import './globals.css';
 import { supabase } from '@/lib/superbase';
 import ShoeCard from '@/components/ShoeCard';
-import { groupShoesByModel } from '@/lib/Groupshoesbymodel';
+import HeroSlider from '@/components/HeroSlider';
+import { groupShoes } from '@/lib/Groupshoes';
 
 export const revalidate = 0;
 
@@ -9,43 +9,40 @@ export default async function Home() {
     const { data: shoes, error } = await supabase
         .from('shoes')
         .select('*')
-        .order('name', { ascending: true });
+        .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error('Supabase error:', error.message);
-    }
+    if (error) console.error('Supabase error:', error.message);
 
-    const groups = groupShoesByModel(shoes ?? []);
+    const allShoes = shoes ?? [];
+    const { groups } = groupShoes(allShoes);
 
-    // Use the first shoe's image as the hero background
-    const heroBg = shoes?.[1]?.image_url ?? null;
+    // Pick 3 random models for the hero
+    const heroImages = [...groups]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map(g => g.variants?.[0]?.views?.[0]?.imageUrl)
+        .filter((url): url is string => Boolean(url));
 
     return (
-        <div className="pb-20">
-            <section
-                className="relative text-white py-32 px-6 text-center overflow-hidden"
-                style={{
-                    backgroundColor: '#18181b',
-                    backgroundImage: heroBg ? `url(${heroBg})` : undefined,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                }}
-            >
-                {/* Dark overlay so text stays readable */}
-                <div className="absolute inset-0 bg-black/60" />
+        <div className="bg-zinc-50 pb-20">
+            {heroImages.map((url) => (
+                <link key={url} rel="preload" href={url} as="image" />
+            ))}
 
-                <div className="relative z-10">
-                    <h1 className="text-7xl font-black italic tracking-tighter mb-4">ZIKIANO.</h1>
-                    <p className="text-zinc-400 max-w-2xl mx-auto uppercase tracking-widest text-xs font-bold">
-                        High-performance gear delivered across South Africa.
-                        Hand made craftsmanship, nothing but quality leather.
-                    </p>
-                </div>
-            </section>
+            <HeroSlider images={heroImages} />
 
-            <div className="max-w-7xl mx-auto px-6 py-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-                {Object.values(groups).map((variants) => (
-                    <ShoeCard key={variants[0].id} shoes={variants} />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-14 pb-1">
+                <p className="text-[9px] font-black tracking-[0.35em] text-zinc-400 uppercase mb-1">
+                    The Collection
+                </p>
+                <h2 className="text-4xl font-black italic tracking-tighter text-zinc-900 leading-none">
+                    All Shoes
+                </h2>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 py-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {groups.map((group) => (
+                    <ShoeCard key={group.modelKey} group={group} />
                 ))}
             </div>
         </div>
