@@ -1,155 +1,122 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useStore } from '@/lib/store';
-import Link from 'next/link';
-import type { ModelGroup, ColourVariant } from '@/lib/Groupshoes';
+import type { ModelGroup } from '@/lib/Groupshoes';
 
-/** --- CONSTANTS & TYPES --- */
-const SIZES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-type AvailStatus = 'available' | 'instore' | 'on_request' | 'sold_out';
-
-const STATUS_CFG: Record<AvailStatus, { label: string; bg: string; text: string; dot: string }> = {
-    available: { label: 'In Stock', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
-    instore: { label: 'In Store', bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-500' },
-    on_request: { label: 'On Request', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
-    sold_out: { label: 'Sold Out', bg: 'bg-zinc-100', text: 'text-zinc-500', dot: 'bg-zinc-400' },
-};
-
-function deriveStatus(v: ColourVariant): AvailStatus {
-    if (v.status) return v.status as AvailStatus;
-    return v.stock === 0 ? 'sold_out' : 'available';
-}
-
-/** --- SUB-COMPONENTS --- */
-function StatusBadge({ status }: { status: AvailStatus }) {
-    const c = STATUS_CFG[status];
-    return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest backdrop-blur-sm ${c.bg} ${c.text}`}>
-            <span className={`w-1 h-1 rounded-full ${c.dot}`} />
-            {c.label}
-        </span>
-    );
-}
-
-function ColourDot({ variant, selected, onClick }: { variant: ColourVariant; selected: boolean; onClick: () => void; }) {
-    const soldOut = deriveStatus(variant) === 'sold_out';
-    return (
-        <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onClick(); }}
-            className={`relative flex-shrink-0 rounded-full border-2 transition-all w-5 h-5 sm:w-6 sm:h-6 ${selected ? 'border-zinc-900 scale-110 shadow-md' : 'border-zinc-100'} ${soldOut ? 'opacity-30' : ''}`}
-            style={{ backgroundColor: variant.colourHex }}
-        >
-            {soldOut && <span className="absolute inset-0 flex items-center justify-center"><span className="block w-px h-full bg-zinc-400 rotate-45" /></span>}
-        </button>
-    );
-}
-
-/** --- MAIN CARD CONTENT --- */
-function ShoeCardContent({ group }: { group: ModelGroup }) {
+function CardContent({ group }: { group: ModelGroup }) {
     const addToCart = useStore((s) => s.addToCart);
-    const [mounted, setMounted] = useState(false);
-    const [colourIdx, setColourIdx] = useState(0);
     const [viewIdx, setViewIdx] = useState(0);
-    const [selectedSize, setSelectedSize] = useState<number | null>(null);
+    const [colourIdx, setColourIdx] = useState(0);
     const [added, setAdded] = useState(false);
-
-    useEffect(() => { setMounted(true); }, []);
 
     const variant = group.variants[colourIdx];
     if (!variant) return null;
 
-    const status = deriveStatus(variant);
     const views = variant.views;
     const currentView = views[viewIdx] ?? views[0];
 
     const handleAdd = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!selectedSize) return alert("Please select a size");
         addToCart({
             id: currentView?.id ?? String(Date.now()),
-            name: `${group.modelName} - ${variant.colourLabel}`,
+            name: `${group.modelName} – ${variant.colourLabel}`,
             price: variant.salePrice,
             image_url: currentView?.imageUrl ?? '',
         } as any);
-        setAdded(true); setTimeout(() => setAdded(false), 2000);
+        setAdded(true);
+        setTimeout(() => setAdded(false), 2000);
     };
 
-    const nextView = (e?: React.MouseEvent) => { e?.stopPropagation(); setViewIdx(i => (i + 1) % views.length); };
-    const prevView = (e?: React.MouseEvent) => { e?.stopPropagation(); setViewIdx(i => (i - 1 + views.length) % views.length); };
-
     return (
-        <div className="group/card bg-white rounded-2xl overflow-hidden border border-zinc-100 flex flex-col h-full shadow-sm hover:shadow-md transition-shadow">
-
-            {/* ── IMAGE SECTION ── */}
-            <div className="aspect-[4/5] bg-zinc-50 relative overflow-hidden">
+        <div className="group flex flex-col h-full bg-white transition-all duration-700">
+            {/* ── STUDIO GALLERY ── */}
+            <div className="relative aspect-[3/4] overflow-hidden bg-[#F9F9F9] mb-6">
                 {views.map((v, i) => (
                     <img
                         key={v.id}
                         src={v.imageUrl}
                         alt={group.modelName}
-                        className="absolute inset-0 w-full h-full object-contain p-6 transition-all duration-500"
-                        style={{ opacity: i === viewIdx ? 1 : 0, zIndex: i === viewIdx ? 5 : 0 }}
+                        loading="lazy"
+                        className={`absolute inset-0 w-full h-full object-contain p-10 transition-all duration-1000 ease-in-out ${
+                            i === viewIdx ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+                        }`}
                     />
                 ))}
 
-                {/* Mobile-Only Tap Zones (Hidden on Desktop) */}
-                <div className="absolute inset-0 z-10 flex sm:hidden">
-                    <div className="w-1/2 h-full cursor-pointer" onClick={prevView} />
-                    <div className="w-1/2 h-full cursor-pointer" onClick={nextView} />
+                {/* Invisible Navigation Zones */}
+                <div className="absolute inset-0 z-10 flex">
+                    <div
+                        className="w-1/2 cursor-w-resize"
+                        onClick={() => setViewIdx(prev => (prev - 1 + views.length) % views.length)}
+                    />
+                    <div
+                        className="w-1/2 cursor-e-resize"
+                        onClick={() => setViewIdx(prev => (prev + 1) % views.length)}
+                    />
                 </div>
 
-                {/* Desktop-Only Arrows (Appear on Hover) */}
-                <div className="hidden sm:flex absolute inset-0 items-center justify-between px-2 z-20 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                    <button onClick={prevView} className="w-8 h-8 rounded-full bg-white/80 shadow flex items-center justify-center hover:bg-white text-zinc-800">‹</button>
-                    <button onClick={nextView} className="w-8 h-8 rounded-full bg-white/80 shadow flex items-center justify-center hover:bg-white text-zinc-800">›</button>
+                {/* Minimalist Status Indicator */}
+                <div className="absolute top-6 right-6 z-20">
+                    <span className="bg-white px-2.5 py-1 text-[7px] font-black uppercase tracking-[0.25em] shadow-sm border border-zinc-100">
+                        {variant.stock > 0 ? "• Available" : "• Sold Out"}
+                    </span>
                 </div>
 
-                <div className="absolute top-2 right-2 z-30">
-                    <StatusBadge status={status} />
-                </div>
-
-                {/* View Dots */}
-                <div className="absolute bottom-3 left-0 right-0 z-30 flex justify-center gap-1">
+                {/* Mobile View Counter */}
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20">
                     {views.map((_, i) => (
-                        <div key={i} className={`h-1 rounded-full transition-all ${i === viewIdx ? 'w-4 bg-black' : 'w-1 bg-zinc-300'}`} />
+                        <div
+                            key={i}
+                            className={`h-[2px] transition-all duration-500 ${
+                                i === viewIdx ? 'w-4 bg-zinc-900' : 'w-1 bg-zinc-300'
+                            }`}
+                        />
                     ))}
                 </div>
             </div>
 
-            {/* ── INFO SECTION ── */}
-            <div className="p-3 sm:p-4 flex flex-col flex-grow gap-3">
-                <div className="space-y-1">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-zinc-400 leading-none">{variant.brand}</p>
-                    <h3 className="text-xs sm:text-sm font-black text-zinc-900 uppercase tracking-tight line-clamp-1">{group.modelName}</h3>
+            {/* ── PRODUCT META ── */}
+            <div className="px-1 flex flex-col gap-4">
+                <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                        <h3 className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-400 leading-none">
+                            {variant.brand}
+                        </h3>
+                        <p className="text-xs font-bold uppercase tracking-tight text-zinc-900">
+                            {group.modelName}
+                        </p>
+                        <p className="text-[9px] font-medium text-zinc-400 capitalize">
+                            {variant.colourLabel}
+                        </p>
+                    </div>
+                    <p className="text-xs font-black text-zinc-900">
+                        R{variant.salePrice}
+                    </p>
                 </div>
 
-                {/* Colour Selection */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar z-40">
-                    {group.variants.map((v, i) => (
-                        <ColourDot key={v.colourKey} variant={v} selected={i === colourIdx} onClick={() => {setColourIdx(i); setViewIdx(0);}} />
-                    ))}
-                </div>
+                {/* Interactive Elements */}
+                <div className="flex items-center justify-between gap-4 pt-2">
+                    <div className="flex gap-2.5">
+                        {group.variants.map((v, i) => (
+                            <button
+                                key={v.colourKey}
+                                onClick={(e) => { e.stopPropagation(); setColourIdx(i); setViewIdx(0); }}
+                                className={`w-3.5 h-3.5 rounded-full border border-zinc-200 transition-all ${
+                                    i === colourIdx ? 'scale-125 border-zinc-900 ring-1 ring-zinc-900 ring-offset-2' : 'hover:scale-110'
+                                }`}
+                                style={{ backgroundColor: v.colourHex }}
+                            />
+                        ))}
+                    </div>
 
-                {/* Size Selection */}
-                <div className="grid grid-cols-5 gap-1 z-40">
-                    {SIZES.slice(4, 14).map((s) => (
-                        <button key={s} onClick={(e) => { e.stopPropagation(); setSelectedSize(s); }}
-                                className={`py-1.5 rounded text-[9px] font-bold transition-all ${selectedSize === s ? 'bg-black text-white shadow-inner' : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'}`}>
-                            {s}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Price & Action */}
-                <div className="mt-auto pt-2 border-t border-zinc-50 flex items-center justify-between">
-                    <span className="font-black text-sm text-zinc-900">R{variant.salePrice}</span>
                     <button
-                        type="button"
                         onClick={handleAdd}
-                        className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all z-40 ${added ? 'bg-emerald-500 text-white' : 'bg-black text-white active:scale-95 hover:bg-zinc-800'}`}>
-                        {added ? 'Added' : 'Add to Bag'}
+                        className={`text-[9px] font-black uppercase tracking-[0.2em] transition-all py-2 px-4 rounded-full border ${
+                            added ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-white text-zinc-900 border-zinc-200 hover:bg-black hover:text-white hover:border-black'
+                        }`}
+                    >
+                        {added ? 'In Bag' : 'Add To Bag'}
                     </button>
                 </div>
             </div>
@@ -159,8 +126,8 @@ function ShoeCardContent({ group }: { group: ModelGroup }) {
 
 export default function ShoeCard({ group }: { group: ModelGroup }) {
     return (
-        <Suspense fallback={<div className="aspect-[4/5] bg-zinc-100 animate-pulse rounded-2xl" />}>
-            <ShoeCardContent group={group} />
+        <Suspense fallback={<div className="aspect-[3/4] bg-[#F9F9F9] animate-pulse" />}>
+            <CardContent group={group} />
         </Suspense>
     );
 }
