@@ -87,9 +87,9 @@ export default function RegisterPage() {
                         />
                         <label htmlFor="terms-checkbox" className="text-[11px] leading-relaxed text-zinc-500 cursor-pointer">
                             I agree to the{" "}
-                            <Link href="/terms" target="_blank" className="text-black font-bold underline">Terms of Service</Link>
+                            <Link href="/legal/terms" target="_blank" className="text-black font-bold underline">Terms of Service</Link>
                             {" "}and{" "}
-                            <Link href="/returns" target="_blank" className="text-black font-bold underline">Return Policy</Link>.
+                            <Link href="/legal/returns" target="_blank" className="text-black font-bold underline">Return Policy</Link>.
                             <span className="block mt-1 opacity-70 italic text-[9px]">
                                 Your data is protected under POPIA.
                             </span>
