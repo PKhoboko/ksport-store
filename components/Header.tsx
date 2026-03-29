@@ -1,18 +1,20 @@
 "use client";
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { ShoppingBag, User, LogOut } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useState, useEffect } from 'react';
 
 export default function Header() {
-    const cart = useStore((state) => state.cart);
-    const user = useStore((state) => state.user);
+    const cart   = useStore((state) => state.cart);
+    const user   = useStore((state) => state.user);
     const logout = useStore((state) => state.logout);
+    const router = useRouter();
 
-    const [mounted, setMounted] = useState(false);
+    const [mounted, setMounted]     = useState(false);
     const [logoError, setLogoError] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
+    const [scrolled, setScrolled]   = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -20,6 +22,16 @@ export default function Header() {
         window.addEventListener('scroll', onScroll);
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
+
+    /** Guard: send guests to login, return them to /cart after sign-in */
+    const handleCartClick = (e: React.MouseEvent) => {
+        if (!mounted) return;
+        if (!user) {
+            e.preventDefault();
+            router.push('/login?redirect=/cart');
+        }
+        // If logged in, the <Link href="/cart"> navigates normally
+    };
 
     return (
         <header
@@ -29,7 +41,7 @@ export default function Header() {
                     : 'bg-white border-b border-zinc-100'
             }`}
         >
-            {/* Thin gold accent bar at very top */}
+            {/* Gold accent bar */}
             <div className="h-[3px] w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
 
             <div className="max-w-7xl mx-auto px-8 h-24 flex items-center justify-between">
@@ -53,10 +65,10 @@ export default function Header() {
                     )}
                 </Link>
 
-                {/* Nav Links — centre */}
+                {/* Nav Links */}
                 <nav className="hidden md:flex items-center gap-10">
                     {[
-                        { href: '/', label: 'Home' },
+                        { href: '/',     label: 'Home' },
                         { href: '/shop', label: 'Shop' },
                     ].map(({ href, label }) => (
                         <Link
@@ -96,10 +108,12 @@ export default function Header() {
                         </Link>
                     )}
 
-                    {/* Shopping Bag */}
+                    {/* Shopping Bag — guests are redirected to /login?redirect=/cart */}
                     <Link
                         href="/cart"
+                        onClick={handleCartClick}
                         className="relative w-12 h-12 flex items-center justify-center rounded-full bg-zinc-900 text-white hover:bg-amber-500 transition-all duration-300 group shadow-md shadow-zinc-200"
+                        title={mounted && !user ? 'Login to view cart' : 'Cart'}
                     >
                         <ShoppingBag
                             size={20}
