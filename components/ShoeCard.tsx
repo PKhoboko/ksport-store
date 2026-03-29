@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { useStore } from '@/lib/store';
 import type { ModelGroup } from '@/lib/Groupshoes';
 
-const SIZES = [6,7,8,9,10,11,12,13,14,15];
+const SIZES = [4,5,6,7,8,9,10,11,12,13,14,15];
 
 /** Deterministic price formatter — avoids hydration mismatch */
 function fmtPrice(n: number): string {
