@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useCart } from "@/lib/cart";
-
-// ─── Set in .env.local ────────────────────────────────────────────────────────
-// NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=pk_live_xxxx
-// NEXT_PUBLIC_WHATSAPP_NUMBER=27821234567   ← your WhatsApp Business number
-const PAYSTACK_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!;
-const WA_NUMBER    = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "2784325376";
+import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useStore } from "@/lib/store";
+import { supabase } from "@/lib/superbase";
+import { usePaystackPayment } from "react-paystack";
+import { Trash2, CreditCard, Loader2, MapPin, Package, ChevronRight } from "lucide-react";
+import { verifyAndRecordOrder } from "@/app/actions/paystack";
+import { sendOrderEmail } from "@/app/actions/sendOrderEmail";
 
 const POSTNET_BRANCHES = [
     { code: "CPT001", name: "Cape Town CBD" },
@@ -25,266 +25,256 @@ const PROVINCES = [
     "Limpopo","Mpumalanga","North West","Free State","Northern Cape",
 ];
 
-export default function Checkout() {
-    const { items } = useCart();
-    const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-
-    // ── form state ─────────────────────────────────────────────────────────────
-    const [method,    setMethod]    = useState<"address" | "postnet">("address");
-    const [name,      setName]      = useState("");
-    const [email,     setEmail]     = useState("");
-    const [phone,     setPhone]     = useState("");
-    const [street,    setStreet]    = useState("");
-    const [city,      setCity]      = useState("");
-    const [province,  setProvince]  = useState("");
-    const [postal,    setPostal]    = useState("");
-    const [branch,    setBranch]    = useState(POSTNET_BRANCHES[0]);
-    const [error,     setError]     = useState("");
+export default function CartClient() {
+    const router = useRouter();
+    const { cart, removeFromCart, clearCart } = useStore();
+    const [user,      setUser]      = useState<{ email: string } | null>(null);
+    const [authReady, setAuthReady] = useState(false);
     const [loading,   setLoading]   = useState(false);
 
-    // ── build WhatsApp message sent to YOUR number ─────────────────────────────
-    function buildWaUrl(ref: string) {
-        const delivery = method === "address"
-            ? `🏠 *Home Delivery*\n${street}, ${city}, ${province}, ${postal}`
-            : `📦 *PostNet:* ${branch.name} (${branch.code})`;
+    const [showDelivery,   setShowDelivery]   = useState(false);
+    const [deliveryMethod, setDeliveryMethod] = useState<"address" | "postnet">("address");
+    const [customerName,   setCustomerName]   = useState("");
+    const [customerPhone,  setCustomerPhone]  = useState("");
+    const [street,   setStreet]   = useState("");
+    const [city,     setCity]     = useState("");
+    const [province, setProvince] = useState("");
+    const [postal,   setPostal]   = useState("");
+    const [branch,   setBranch]   = useState(POSTNET_BRANCHES[0]);
+    const [deliveryError, setDeliveryError] = useState("");
 
-        const msg =
-            `🛒 *New Order — PAID!*\n\n` +
-            `*Ref:* ${ref}\n\n` +
-            `👤 *Name:* ${name}\n` +
-            `📧 *Email:* ${email}\n` +
-            `📱 *Phone:* ${phone}\n\n` +
-            `🧾 *Items:*\n` +
-            items.map(i => `  • ${i.name} × ${i.quantity} — R${(i.price * i.quantity).toFixed(2)}`).join("\n") +
-            `\n\n💰 *Total: R${total.toFixed(2)}*\n\n` +
-            `📬 *Delivery:*\n${delivery}`;
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data }) => {
+            if (data?.user?.email) setUser({ email: data.user.email });
+            setAuthReady(true);
+        });
+    }, []);
 
-        return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
+    const totalAmount = useMemo(() =>
+            cart.reduce((acc, item) => acc + item.price * (item.quantity || 1), 0),
+        [cart]);
+
+    const config = {
+        reference: `ref_${Date.now()}`,
+        email: user?.email || "pwkhoboko@gmail.com",
+        amount: Math.round(totalAmount * 100),
+        publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
+        currency: "ZAR",
+    };
+
+    const initializePayment = usePaystackPayment(config as any);
+
+    function deliveryString() {
+        return deliveryMethod === "address"
+            ? `🏠 Home Delivery: ${street}, ${city}, ${province}, ${postal}`
+            : `📦 PostNet: ${branch.name} (${branch.code})`;
     }
 
-    // ── validate ───────────────────────────────────────────────────────────────
-    function validate() {
-        if (!name.trim() || !email.trim() || !phone.trim())
-            return "Please fill in all your contact details.";
-        if (!/^\S+@\S+\.\S+$/.test(email))
-            return "Please enter a valid email address.";
-        if (method === "address" && (!street || !city || !province || !postal))
+    function validateDelivery() {
+        if (!customerName.trim())  return "Please enter your full name.";
+        if (!customerPhone.trim()) return "Please enter your WhatsApp number.";
+        if (deliveryMethod === "address" && (!street || !city || !province || !postal))
             return "Please fill in your complete delivery address.";
         return null;
     }
 
-    // ── open Paystack ──────────────────────────────────────────────────────────
-    function handlePay() {
-        const err = validate();
-        if (err) { setError(err); return; }
-        setError("");
-        setLoading(true);
-
-        const launch = () => {
-            // @ts-ignore — PaystackPop injected by inline script
-            window.PaystackPop.setup({
-                key:      PAYSTACK_KEY,
-                email,
-                amount:   total * 100,   // kobo / cents
-                currency: "ZAR",
-                ref:      `ORD-${Date.now()}`,
-                metadata: {
-                    custom_fields: [
-                        { display_name: "Customer Name", variable_name: "customer_name", value: name },
-                        { display_name: "Phone",         variable_name: "phone",         value: phone },
-                        { display_name: "Delivery",      variable_name: "delivery",
-                            value: method === "address"
-                                ? `${street}, ${city}, ${province} ${postal}`
-                                : `PostNet: ${branch.name} (${branch.code})`,
-                        },
-                    ],
-                },
-                onClose() { setLoading(false); },
-                callback(res: { reference: string }) {
-                    setLoading(false);
-                    // ✅ redirect straight to WhatsApp with pre-filled order message
-                    window.location.href = buildWaUrl(res.reference);
-                },
-            }).openIframe();
-        };
-
-        if (!document.getElementById("ps-script")) {
-            const s = document.createElement("script");
-            s.id = "ps-script";
-            s.src = "https://js.paystack.co/v1/inline.js";
-            s.onload = launch;
-            document.body.appendChild(s);
-        } else {
-            launch();
-        }
+    function handleCheckoutClick() {
+        setDeliveryError("");
+        setShowDelivery(true);
+        setTimeout(() => document.getElementById("delivery-form")?.scrollIntoView({ behavior: "smooth" }), 100);
     }
 
-    // ─── render ────────────────────────────────────────────────────────────────
+    function handleConfirmDelivery() {
+        const err = validateDelivery();
+        if (err) { setDeliveryError(err); return; }
+        setDeliveryError("");
+        initializePayment({ onSuccess: handleSuccess, onClose: () => {} });
+    }
+
+    const handleSuccess = async (reference: any) => {
+        try {
+            setLoading(true);
+
+            const result = await verifyAndRecordOrder(reference.reference, cart, user?.email || "");
+            if (!result.success) {
+                alert("Payment verification failed. Please contact support.");
+                return;
+            }
+
+            await sendOrderEmail({
+                ref:           reference.reference,
+                customerName,
+                customerEmail:  user?.email || "pwkhoboko@gmail.com",
+                customerPhone,
+                items: cart.map(i => ({
+                    name:     i.name,
+                    price:    i.price,
+                    quantity: i.quantity || 1,
+                    sizes:    i.sizes,
+                })),
+                total:    totalAmount,
+                delivery: deliveryString(),
+            });
+
+            clearCart();
+            router.push("/success");
+
+        } catch (err) {
+            console.error("Payment Error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <div style={st.page}>
-            <style>{css}</style>
+        <div className="p-4 md:p-12 max-w-6xl mx-auto min-h-screen">
+            <h1 className="text-3xl font-bold mb-10 uppercase tracking-tighter italic">Your Cart</h1>
 
-            <div style={st.wrap}>
-
-                {/* Header */}
-                <div style={st.header}>
-                    <span style={st.badge}>Secure Checkout</span>
-                    <h1 style={st.h1}>Complete your order</h1>
-                    <p style={st.sub}>Pay with Paystack · Order sent to our WhatsApp instantly</p>
+            {cart.length === 0 ? (
+                <div className="text-center py-24 border-t border-black">
+                    <p className="text-gray-400 uppercase tracking-widest">Your bag is empty.</p>
+                    <button onClick={() => router.push("/")} className="mt-6 text-black border-b border-black pb-1 hover:text-gray-500 hover:border-gray-500 transition-all">
+                        CONTINUE SHOPPING
+                    </button>
                 </div>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
 
-                {/* Order summary */}
-                <div className="ch-card" style={{ marginBottom: 18 }}>
-                    <p style={st.label}>Order Summary</p>
-                    {items.map((item, i) => (
-                        <div key={i} style={st.row}>
-                            <span style={st.iname}>{item.name} <span style={st.qty}>× {item.quantity}</span></span>
-                            <span style={st.iprice}>R{(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                    ))}
-                    <div style={{ ...st.row, borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 12, marginTop: 6 }}>
-                        <span style={{ fontWeight: 600 }}>Total</span>
-                        <span style={st.total}>R{total.toFixed(2)}</span>
-                    </div>
-                </div>
-
-                {/* Contact details */}
-                <div className="ch-card" style={{ marginBottom: 14 }}>
-                    <p style={st.label}>Your Details</p>
-                    <div style={st.stack}>
-                        <input className="ch-input" placeholder="Full Name"                             value={name}  onChange={e => setName(e.target.value)} />
-                        <input className="ch-input" placeholder="Email Address"           type="email"  value={email} onChange={e => setEmail(e.target.value)} />
-                        <input className="ch-input" placeholder="WhatsApp Number (e.g. 0821234567)" type="tel" value={phone} onChange={e => setPhone(e.target.value)} />
-                    </div>
-                </div>
-
-                {/* Delivery method */}
-                <div className="ch-card" style={{ marginBottom: 14 }}>
-                    <p style={st.label}>Delivery Method</p>
-
-                    <div style={st.tabs}>
-                        {(["address","postnet"] as const).map(t => (
-                            <button
-                                key={t}
-                                onClick={() => setMethod(t)}
-                                style={{ ...st.tab, ...(method === t ? st.tabOn : {}) }}
-                            >
-                                {t === "address" ? "🏠  Home Delivery" : "📦  PostNet"}
-                            </button>
+                    {/* LEFT: cart items */}
+                    <div className="lg:col-span-2 space-y-10">
+                        {cart.map((item) => (
+                            <div key={item.id} className="flex flex-col sm:flex-row items-start gap-8 border-b border-gray-100 pb-10">
+                                <div className="w-full sm:w-40 h-40 bg-[#f9f9f9] flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-100">
+                                    <img
+                                        src={item.image_url}
+                                        alt={item.name}
+                                        className="w-full h-full object-contain p-2 mix-blend-multiply"
+                                        onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/150?text=No+Image"; }}
+                                    />
+                                </div>
+                                <div className="flex-grow">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h2 className="font-black text-xl uppercase leading-none mb-1">{item.name}</h2>
+                                            <p className="text-gray-400 text-sm tracking-widest mb-4">{item.brand || "ZIKIANO"}</p>
+                                        </div>
+                                        <button onClick={() => removeFromCart(item.id)} className="bg-black text-white p-2 hover:bg-gray-800 transition-colors">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                    <div className="flex justify-between items-end mt-4">
+                                        <div>{item.sizes && <p className="text-[10px] font-bold border border-black px-2 py-0.5 inline-block">SIZE: {item.sizes}</p>}</div>
+                                        <p className="font-bold text-lg">R {item.price.toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </div>
                         ))}
                     </div>
 
-                    {method === "address" && (
-                        <div style={st.stack}>
-                            <input className="ch-input" placeholder="Street Address" value={street}   onChange={e => setStreet(e.target.value)} />
-                            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                                <input className="ch-input" placeholder="City"        value={city}     onChange={e => setCity(e.target.value)} />
-                                <input className="ch-input" placeholder="Postal Code" value={postal}   onChange={e => setPostal(e.target.value)} />
+                    {/* RIGHT: summary + delivery */}
+                    <div className="h-fit lg:sticky lg:top-24 space-y-6">
+
+                        {/* Summary */}
+                        <div className="border-2 border-black p-8">
+                            <h2 className="font-black text-2xl uppercase mb-6 italic">Summary</h2>
+                            <div className="space-y-4 border-b border-gray-200 pb-6 mb-6">
+                                <div className="flex justify-between text-gray-500 uppercase text-xs tracking-widest">
+                                    <span>Subtotal</span><span>R {totalAmount.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-gray-500 uppercase text-xs tracking-widest">
+                                    <span>Shipping</span><span className="text-black font-bold">COMPLIMENTARY</span>
+                                </div>
                             </div>
-                            <select className="ch-input" value={province} onChange={e => setProvince(e.target.value)}>
-                                <option value="">Select Province</option>
-                                {PROVINCES.map(p => <option key={p}>{p}</option>)}
-                            </select>
-                        </div>
-                    )}
+                            <div className="flex justify-between text-2xl font-black uppercase mb-8">
+                                <span>Total</span><span>R {totalAmount.toLocaleString()}</span>
+                            </div>
 
-                    {method === "postnet" && (
-                        <div style={st.stack}>
-                            <select
-                                className="ch-input"
-                                value={branch.code}
-                                onChange={e => setBranch(POSTNET_BRANCHES.find(b => b.code === e.target.value)!)}
+                            {/* Only show auth warning AFTER Supabase has responded */}
+                            {authReady && !user && (
+                                <p className="text-[10px] text-red-600 font-bold mb-4 text-center uppercase tracking-tighter">
+                                    Authentication Required to Proceed
+                                </p>
+                            )}
+
+                            {/* Show spinner while auth is resolving */}
+                            {!authReady && (
+                                <div className="flex justify-center mb-4">
+                                    <Loader2 className="animate-spin text-gray-300" size={20} />
+                                </div>
+                            )}
+
+                            <button
+                                className="w-full bg-black text-white py-5 font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black border-2 border-black transition-all disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-400 flex items-center justify-center gap-3"
+                                disabled={!authReady || !user || cart.length === 0 || loading}
+                                onClick={handleCheckoutClick}
                             >
-                                {POSTNET_BRANCHES.map(b => (
-                                    <option key={b.code} value={b.code}>{b.name} — {b.code}</option>
-                                ))}
-                            </select>
-                            <p style={st.hint}>📍 Your parcel will be addressed to this PostNet branch.</p>
+                                {loading ? <Loader2 className="animate-spin" /> : <><CreditCard size={20} />CHECKOUT</>}
+                            </button>
                         </div>
-                    )}
+
+                        {/* Delivery form */}
+                        {showDelivery && (
+                            <div id="delivery-form" className="border-2 border-black p-8">
+                                <h2 className="font-black text-lg uppercase mb-1 italic tracking-tight">Delivery Details</h2>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-6">
+                                    Order sent to our WhatsApp instantly after payment
+                                </p>
+
+                                <div className="space-y-3 mb-6">
+                                    <input className={inp} placeholder="Full Name"                               value={customerName}  onChange={e => setCustomerName(e.target.value)} />
+                                    <input className={inp} placeholder="Phone Number (e.g. 0821234567)" type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 mb-5">
+                                    {(["address","postnet"] as const).map(m => (
+                                        <button key={m} onClick={() => setDeliveryMethod(m)}
+                                                className={`py-3 text-xs font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${deliveryMethod === m ? "bg-black text-white border-black" : "bg-white text-black border-black hover:bg-gray-50"}`}>
+                                            {m === "address" ? <><MapPin size={13} />Home</> : <><Package size={13} />PostNet</>}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {deliveryMethod === "address" && (
+                                    <div className="space-y-3 mb-5">
+                                        <input className={inp} placeholder="Street Address" value={street}   onChange={e => setStreet(e.target.value)} />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input className={inp} placeholder="City"        value={city}    onChange={e => setCity(e.target.value)} />
+                                            <input className={inp} placeholder="Postal Code" value={postal}  onChange={e => setPostal(e.target.value)} />
+                                        </div>
+                                        <select className={inp} value={province} onChange={e => setProvince(e.target.value)}>
+                                            <option value="">Select Province</option>
+                                            {PROVINCES.map(p => <option key={p}>{p}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {deliveryMethod === "postnet" && (
+                                    <div className="space-y-3 mb-5">
+                                        <select className={inp} value={branch.code} onChange={e => setBranch(POSTNET_BRANCHES.find(b => b.code === e.target.value)!)}>
+                                            {POSTNET_BRANCHES.map(b => <option key={b.code} value={b.code}>{b.name} — {b.code}</option>)}
+                                        </select>
+                                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Parcel addressed to this PostNet branch.</p>
+                                    </div>
+                                )}
+
+                                {deliveryError && (
+                                    <p className="text-[11px] text-red-600 font-bold uppercase tracking-tight mb-4">⚠ {deliveryError}</p>
+                                )}
+
+                                <button
+                                    onClick={handleConfirmDelivery}
+                                    disabled={loading}
+                                    className="w-full bg-black text-white py-4 font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black border-2 border-black transition-all disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-400 flex items-center justify-center gap-3"
+                                >
+                                    {loading ? <Loader2 className="animate-spin" size={18} /> : <><CreditCard size={18} />PAY WITH PAYSTACK<ChevronRight size={15} /></>}
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
-
-                {/* Error */}
-                {error && <div style={st.err}>⚠️ {error}</div>}
-
-                {/* Pay button */}
-                <button className="ch-pay" onClick={handlePay} disabled={loading || items.length === 0}>
-                    {loading
-                        ? "Opening Paystack…"
-                        : `🔒  Pay R${total.toFixed(2)} with Paystack`}
-                </button>
-
-                <p style={st.foot}>
-                    After payment your order details are sent directly to our WhatsApp
-                </p>
-            </div>
+            )}
         </div>
     );
 }
 
-// ─── styles ───────────────────────────────────────────────────────────────────
-const st: Record<string, React.CSSProperties> = {
-    page:   { minHeight:"100vh", background:"#0c0c0c", display:"flex", alignItems:"center", justifyContent:"center", padding:"2rem 1rem", color:"#fff" },
-    wrap:   { width:"100%", maxWidth:500 },
-    header: { marginBottom:28 },
-    badge:  { display:"inline-block", fontSize:10, letterSpacing:3, textTransform:"uppercase", color:"#00e676", background:"rgba(0,230,118,.1)", padding:"3px 10px", borderRadius:20, marginBottom:10 },
-    h1:     { fontFamily:"'Syne',sans-serif", fontSize:"1.9rem", fontWeight:800, margin:"0 0 6px" },
-    sub:    { color:"rgba(255,255,255,.35)", fontSize:13, margin:0 },
-    label:  { fontSize:10, letterSpacing:2.5, textTransform:"uppercase", color:"rgba(255,255,255,.28)", margin:"0 0 14px" },
-    row:    { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid rgba(255,255,255,.05)" },
-    iname:  { color:"rgba(255,255,255,.72)", fontSize:13.5 },
-    qty:    { color:"rgba(255,255,255,.35)", fontSize:12 },
-    iprice: { color:"#00e676", fontSize:13.5, fontWeight:600 },
-    total:  { fontFamily:"'Syne',sans-serif", fontSize:"1.3rem", fontWeight:800, color:"#00e676" },
-    stack:  { display:"flex", flexDirection:"column", gap:10 },
-    tabs:   { display:"flex", gap:7, background:"rgba(255,255,255,.05)", borderRadius:11, padding:5, marginBottom:16 },
-    tab:    { flex:1, padding:"10px 0", borderRadius:8, border:"none", background:"transparent", color:"rgba(255,255,255,.38)", fontSize:13.5, fontWeight:600, cursor:"pointer", transition:"all .2s", fontFamily:"'DM Sans',sans-serif" },
-    tabOn:  { background:"#00e676", color:"#000" },
-    hint:   { color:"rgba(255,255,255,.22)", fontSize:12, margin:0 },
-    err:    { background:"rgba(255,60,60,.1)", border:"1px solid rgba(255,60,60,.25)", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#ff6b6b", marginBottom:14 },
-    foot:   { textAlign:"center", color:"rgba(255,255,255,.18)", fontSize:11.5, marginTop:14 },
-};
-
-const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
-  *, *::before, *::after { box-sizing:border-box; font-family:'DM Sans',sans-serif; }
-  .ch-card {
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.07);
-    border-radius: 18px;
-    padding: 20px;
-  }
-  .ch-input {
-    width:100%;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.1);
-    border-radius:10px;
-    padding:12px 14px;
-    color:#fff;
-    font-size:14px;
-    outline:none;
-    transition:border-color .2s;
-  }
-  .ch-input:focus { border-color:#00e676; }
-  .ch-input::placeholder { color:rgba(255,255,255,.26); }
-  .ch-input option { background:#1c1c1c; }
-  .ch-pay {
-    width:100%;
-    padding:16px 0;
-    background:linear-gradient(135deg,#00e676,#00897b);
-    border:none;
-    border-radius:13px;
-    color:#fff;
-    font-family:'Syne',sans-serif;
-    font-weight:800;
-    font-size:1rem;
-    letter-spacing:.3px;
-    cursor:pointer;
-    transition:transform .15s, box-shadow .15s;
-  }
-  .ch-pay:hover:not(:disabled) {
-    transform:translateY(-2px);
-    box-shadow:0 10px 38px rgba(0,230,118,.35);
-  }
-  .ch-pay:disabled { opacity:.45; cursor:not-allowed; }
-`;
+const inp = "w-full border border-black px-4 py-3 text-sm uppercase tracking-wider placeholder:text-gray-400 placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-black bg-white";
