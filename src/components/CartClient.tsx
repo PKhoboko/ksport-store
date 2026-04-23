@@ -367,7 +367,7 @@ export default function CartClient() {
                                     </button>
                                 ) : (
                                     <PayPalButton
-                                        amount={totalAmount}
+                                        amountZAR={totalAmount}
                                         onSuccess={handlePayPalSuccess}
                                         onError={() => alert("Payment failed. Please try again.")}
                                     />
