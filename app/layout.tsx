@@ -2,66 +2,71 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 import Header from '@/components/Header';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en">
-        <body className={`${inter.className} antialiased flex flex-col min-h-screen`}>
+        <body className={`${inter.className} flex min-h-screen flex-col antialiased`}>
         <Header />
         <main className="flex-grow">{children}</main>
 
-        <footer className="bg-zinc-50 border-t border-zinc-200 pt-24 pb-12 px-6">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-16">
-                {/* Brand Section */}
-                <div className="col-span-1 md:col-span-2">
-                    <h2 className="text-3xl font-black italic tracking-tighter mb-6 text-black uppercase">ZIKIANO</h2>
-                    <p className="text-zinc-500 text-sm max-w-sm leading-relaxed italic">
-                        Zikiano is South Africa's leading distributor of artisanal performance footwear.
-                        We specialize in reaching the most remote locations via GPS-coordinate delivery.
+        <footer className="border-t border-black/10 bg-black px-0 py-14 text-white sm:py-20">
+            <div className="premium-container grid grid-cols-1 gap-12 md:grid-cols-4">
+                <div className="md:col-span-2">
+                    <div className="flex items-center gap-4">
+                        <Image
+                            src="/logo-premium-concept-web.svg"
+                            alt="ZIKIANO OUTBACK - South African handmade goods"
+                            width={900}
+                            height={600}
+                            className="h-44 w-auto max-w-full border border-white/10 object-contain sm:h-52"
+                        />
+                    </div>
+                    <p className="mt-6 max-w-lg text-sm font-semibold uppercase leading-6 tracking-[0.12em] text-white/55">
+                        A South African company creating handmade products with premium fruit leather supplied from Nigeria,
+                        starting with footwear and expanding into bags and clothing.
+                        All customer checkout flows are built around Paystack.
                     </p>
                 </div>
 
-                {/* Operations Section */}
                 <div>
-                    <h4 className="font-black text-xs uppercase tracking-[0.2em] mb-6 text-zinc-900">Operations</h4>
-                    <div className="space-y-2 text-sm text-zinc-500">
+                    <h4 className="mb-5 text-[10px] font-black uppercase tracking-[0.28em] text-white/40">Operations</h4>
+                    <div className="space-y-3 text-sm font-semibold text-white/70">
                         <p>Bellville, Cape Town</p>
-                        <p className="hover:text-black transition-colors">Contact: +27 62 420 3360</p>
-                        <p className="hover:text-black transition-colors">Email: info@zikiano.com</p>
+                        <p>+27 62 420 3360</p>
+                        <p>info@zikiano.com</p>
                     </div>
                 </div>
 
-                {/* Engineering Credit */}
-                <div className="flex flex-col items-start md:items-end justify-start">
-                    <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 text-left md:text-right leading-loose">
-                        Website Designed & Engineered by
-                        <br/>
-                        <a href="https://www.neriasolutions.co.za"
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           className="text-black text-xs font-black hover:underline transition-all">
-                            Neria Solutions
-                        </a>
+                <div>
+                    <h4 className="mb-5 text-[10px] font-black uppercase tracking-[0.28em] text-white/40">Store</h4>
+                    <div className="flex flex-col gap-3 text-sm font-semibold text-white/70">
+                        <Link href="/shop" className="transition-colors hover:text-white">Shop</Link>
+                        <Link href="/legal/terms" className="transition-colors hover:text-white">Terms & Conditions</Link>
+                        <Link href="/legal/returns" className="transition-colors hover:text-white">Return Policy</Link>
                     </div>
                 </div>
             </div>
 
-            {/* Bottom Legal Bar */}
-            <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-zinc-200 flex flex-col md:flex-row justify-between items-center gap-6 text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
-                <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8">
-                    <p>© 2026 ZIKIANO ZA</p>
-                    <p className="opacity-50 italic">POPIA COMPLIANT</p>
+            <div className="premium-container mt-14 flex flex-col gap-5 border-t border-white/10 pt-7 text-[10px] font-black uppercase tracking-[0.22em] text-white/35 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:gap-8">
+                    <p>© 2026 ZIKIANO OUTBACK ZA</p>
+                    <p>POPIA compliant</p>
+                    <p>Secure payment by Paystack</p>
                 </div>
-
-                <div className="flex gap-8">
-                    <Link href="/legal/terms" className="hover:text-black transition-colors underline decoration-zinc-200 underline-offset-4">
-                        Terms & Conditions
-                    </Link>
-                    <Link href="/legal/returns" className="hover:text-black transition-colors underline decoration-zinc-200 underline-offset-4">
-                        Return Policy
-                    </Link>
+                <div>
+                    <span>Designed & Engineered by </span>
+                    <a
+                        href="https://www.neriasolutions.co.za"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-white transition-colors hover:text-zikiano-signal"
+                    >
+                        Neria Solutions
+                    </a>
                 </div>
             </div>
         </footer>

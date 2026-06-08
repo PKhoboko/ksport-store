@@ -1,261 +1,368 @@
 "use client";
 
-import { useState, Suspense } from 'react';
-import { useStore } from '@/lib/store';
-import type { ModelGroup } from '@/lib/Groupshoes';
+import { Suspense, useEffect, useState } from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Minus, Plus, ShoppingBag, X, ZoomIn } from "lucide-react";
+import { useStore } from "@/lib/store";
+import type { ModelGroup } from "@/lib/Groupshoes";
 
-const SIZES = [4,5,6,7,8,9,10,11,12,13,14,15];
+const SIZES = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
-/** Deterministic price formatter — avoids hydration mismatch */
 function fmtPrice(n: number): string {
-    return 'R\u00a0' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return "R " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 function CardContent({ group }: { group: ModelGroup }) {
     const addToCart = useStore((s) => s.addToCart);
-    const [viewIdx, setViewIdx]           = useState(0);
-    const [colourIdx, setColourIdx]       = useState(0);
+    const [viewIdx, setViewIdx] = useState(0);
+    const [colourIdx, setColourIdx] = useState(0);
     const [selectedSize, setSelectedSize] = useState<number | null>(null);
-    const [sizeOpen, setSizeOpen]         = useState(false);
-    const [sizeError, setSizeError]       = useState(false);
-    const [added, setAdded]               = useState(false);
+    const [sizeOpen, setSizeOpen] = useState(false);
+    const [sizeError, setSizeError] = useState(false);
+    const [added, setAdded] = useState(false);
+    const [zoomOpen, setZoomOpen] = useState(false);
+    const [zoomScale, setZoomScale] = useState(1);
 
     const variant = group.variants[colourIdx];
-    if (!variant) return null;
-
-    const views       = variant.views;
+    const views = variant?.views ?? [];
     const currentView = views[viewIdx] ?? views[0];
+    const isSoldOut = variant?.stock === 0;
+
+    useEffect(() => {
+        if (!zoomOpen || views.length === 0) return;
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setZoomOpen(false);
+            if (event.key === "ArrowLeft") setViewIdx((p) => (p - 1 + views.length) % views.length);
+            if (event.key === "ArrowRight") setViewIdx((p) => (p + 1) % views.length);
+        };
+
+        document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", onKeyDown);
+
+        return () => {
+            document.body.style.overflow = "";
+            window.removeEventListener("keydown", onKeyDown);
+        };
+    }, [zoomOpen, views.length]);
+
+    if (!variant) return null;
 
     const handleAdd = (e: React.MouseEvent) => {
         e.stopPropagation();
+        if (isSoldOut) return;
         if (!selectedSize) {
             setSizeError(true);
             setSizeOpen(true);
-            setTimeout(() => setSizeError(false), 2000);
+            setTimeout(() => setSizeError(false), 1800);
             return;
         }
+
         addToCart({
-            id:        currentView?.id ?? String(Date.now()),
-            name:      `${group.modelName} – ${variant.colourLabel} – Size ${selectedSize}`,
-            price:     variant.salePrice,
-            image_url: currentView?.imageUrl ?? '',
+            id: currentView?.id ?? String(Date.now()),
+            name: `${group.modelName} - ${variant.colourLabel} - Size ${selectedSize}`,
+            price: variant.salePrice,
+            image_url: currentView?.imageUrl ?? "",
+            brand: variant.brand,
+            stock: variant.stock,
+            description: variant.category,
+            category: variant.category,
+            sizes: [selectedSize],
         } as any);
         setAdded(true);
-        setTimeout(() => setAdded(false), 2000);
+        setTimeout(() => setAdded(false), 1800);
     };
 
     return (
-        <div className="group flex flex-col h-full bg-white border border-zinc-100 hover:shadow-xl transition-all duration-500 overflow-hidden rounded-sm">
-
-            {/* ── IMAGE ── */}
-            {/*
-              Mobile:  aspect-[4/3] landscape — shorter so two cards fit on screen
-                       without scrolling, images still look great
-              Desktop: aspect-square — equal proportions, editorial feel
-            */}
-            <div className="relative aspect-[4/3] sm:aspect-square overflow-hidden bg-zinc-100">
-
+        <article className="group flex h-full flex-col overflow-hidden bg-white">
+            <div className="relative aspect-[4/5] overflow-hidden bg-zikiano-stone">
                 {views.map((v, i) => (
                     <img
                         key={v.id}
                         src={v.imageUrl}
-                        alt={group.modelName}
+                        alt={`${group.modelName} ${variant.colourLabel}`}
                         loading="lazy"
-                        className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out ${
-                            i === viewIdx
-                                ? 'opacity-100 scale-100'
-                                : 'opacity-0 scale-95'
+                        className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ${
+                            i === viewIdx ? "scale-100 opacity-100" : "scale-105 opacity-0"
                         }`}
                     />
                 ))}
 
-                {/* Tap zones — left = prev, right = next */}
                 {views.length > 1 && (
                     <div className="absolute inset-0 z-10 flex">
-                        <div className="w-1/2 cursor-w-resize"
-                             onClick={() => setViewIdx(p => (p - 1 + views.length) % views.length)} />
-                        <div className="w-1/2 cursor-e-resize"
-                             onClick={() => setViewIdx(p => (p + 1) % views.length)} />
+                        <button
+                            type="button"
+                            className="h-full w-1/2 bg-transparent"
+                            onClick={() => setViewIdx((p) => (p - 1 + views.length) % views.length)}
+                            aria-label="Previous product image"
+                        />
+                        <button
+                            type="button"
+                            className="h-full w-1/2 bg-transparent"
+                            onClick={() => setViewIdx((p) => (p + 1) % views.length)}
+                            aria-label="Next product image"
+                        />
                     </div>
                 )}
 
-                {/* Status badge — smaller on mobile */}
-                <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20">
-                    <span className={`
-                        px-2 py-0.5 sm:px-2.5 sm:py-1
-                        text-[6px] sm:text-[7px]
-                        font-black uppercase tracking-[0.2em]
-                        bg-white shadow-sm border border-zinc-100
-                        ${variant.stock === 0 ? 'text-red-400' : 'text-zinc-600'}
-                    `}>
-                        {variant.stock > 0 ? '• Available' : '• Sold Out'}
+                <div className="absolute left-3 top-3 z-20 flex gap-2">
+                    <span className="bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-black shadow-sm">
+                        {isSoldOut ? "Sold out" : "Available"}
                     </span>
+                    {variant.isOnSale && (
+                        <span className="bg-zikiano-signal px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-black shadow-sm">
+                            Sale
+                        </span>
+                    )}
                 </div>
 
-                {/* View pips — only shown if multiple views */}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setZoomScale(1);
+                        setZoomOpen(true);
+                    }}
+                    className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center bg-white text-black shadow-sm transition-colors hover:bg-zikiano-signal"
+                    aria-label="Zoom product image"
+                    title="Zoom product image"
+                >
+                    <ZoomIn size={18} />
+                </button>
+
                 {views.length > 1 && (
-                    <div className="absolute bottom-2 sm:bottom-3 left-0 right-0 flex justify-center gap-1 z-20">
+                    <div className="absolute bottom-3 left-3 right-3 z-20 flex gap-1">
                         {views.map((_, i) => (
-                            <div key={i} className={`h-[2px] transition-all duration-500 ${
-                                i === viewIdx
-                                    ? 'w-3 sm:w-4 bg-zinc-900'
-                                    : 'w-1 bg-zinc-300'
-                            }`} />
+                            <span
+                                key={i}
+                                className={`h-1 flex-1 transition-colors ${i === viewIdx ? "bg-black" : "bg-white/65"}`}
+                            />
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* ── META ── */}
-            {/*
-              Mobile: tighter padding, smaller text — card is half screen width
-              Desktop: generous padding, full text sizes
-            */}
-            <div className="px-2.5 pb-3 pt-2.5 sm:px-4 sm:pb-5 sm:pt-4 flex flex-col gap-2 sm:gap-3">
-
-                {/* Brand / Name / Colour + Price */}
-                <div className="flex justify-between items-start gap-1">
+            <div className="flex flex-1 flex-col border-x border-b border-black/10 p-3 sm:p-4">
+                <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.25em] text-zinc-400 leading-none">
-                            {variant.brand}
+                        <p className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">
+                            {variant.brand || "ZIKIANO"}
                         </p>
-                        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-tight text-zinc-900 mt-0.5 truncate">
+                        <h3 className="truncate text-sm font-black uppercase tracking-tight text-black sm:text-base">
                             {group.modelName}
-                        </p>
-                        <p className="text-[8px] sm:text-[9px] font-medium text-zinc-400 capitalize mt-0.5 truncate">
+                        </h3>
+                        <p className="mt-1 truncate text-xs font-semibold capitalize text-zinc-500">
                             {variant.colourLabel}
                         </p>
                     </div>
-                    <div className="text-right shrink-0">
-                        <p className="text-[10px] sm:text-xs font-black text-zinc-900">
-                            {fmtPrice(variant.salePrice)}
-                        </p>
+                    <div className="shrink-0 text-right">
+                        <p className="text-sm font-black text-black">{fmtPrice(variant.salePrice)}</p>
                         {variant.isOnSale && variant.realPrice > variant.salePrice && (
-                            <p className="text-[7px] sm:text-[8px] text-zinc-400 line-through">
+                            <p className="text-[11px] font-semibold text-zinc-400 line-through">
                                 {fmtPrice(variant.realPrice)}
                             </p>
                         )}
                     </div>
                 </div>
 
-                {/* ── SIZE DROPDOWN ── */}
-                <div className="relative">
+                <div className="mt-4 flex min-h-5 flex-wrap gap-2">
+                    {group.variants.map((v, i) => (
+                        <button
+                            key={v.colourKey}
+                            type="button"
+                            title={v.colourLabel}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setColourIdx(i);
+                                setViewIdx(0);
+                            }}
+                            className={`h-5 w-5 border transition-transform ${
+                                i === colourIdx ? "scale-110 border-black ring-2 ring-black/10" : "border-black/15 hover:scale-110"
+                            }`}
+                            style={{ backgroundColor: v.colourHex }}
+                            aria-label={`Select ${v.colourLabel}`}
+                        />
+                    ))}
+                </div>
+
+                <div className="relative mt-4">
                     <button
-                        onClick={(e) => { e.stopPropagation(); setSizeOpen(o => !o); }}
-                        className={`
-                            w-full flex items-center justify-between
-                            px-2 py-1.5 sm:px-3 sm:py-2
-                            border text-[7px] sm:text-[9px] font-black uppercase tracking-[0.15em]
-                            transition-all duration-200
-                            ${sizeError
-                            ? 'border-red-400 text-red-500 bg-red-50'
-                            : selectedSize
-                                ? 'border-zinc-900 text-zinc-900 bg-white'
-                                : 'border-zinc-200 text-zinc-400 bg-white hover:border-zinc-500'
-                        }
-                        `}
-                    >
-                        <span>
-                            {sizeError
-                                ? 'Pick a size'
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSizeOpen((o) => !o);
+                        }}
+                        className={`flex h-11 w-full items-center justify-between border px-3 text-[10px] font-black uppercase tracking-[0.16em] transition-colors ${
+                            sizeError
+                                ? "border-red-500 bg-red-50 text-red-600"
                                 : selectedSize
-                                    ? `Size ${selectedSize} (UK/SA)`
-                                    : 'Size (UK/SA)'}
-                        </span>
-                        <span className={`text-[9px] sm:text-[11px] transition-transform duration-200 ${sizeOpen ? 'rotate-180' : ''}`}>
-                            ▾
-                        </span>
+                                  ? "border-black bg-white text-black"
+                                  : "border-black/15 bg-white text-zinc-500 hover:border-black"
+                        }`}
+                    >
+                        <span>{sizeError ? "Choose size" : selectedSize ? `UK/SA ${selectedSize}` : "Select size"}</span>
+                        <ChevronDown size={15} className={`transition-transform ${sizeOpen ? "rotate-180" : ""}`} />
                     </button>
 
-                    {/* Dropdown — opens upward */}
                     {sizeOpen && (
-                        <div
-                            className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-zinc-200 shadow-2xl z-30 p-1.5 sm:p-2"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="grid grid-cols-5 gap-1">
+                        <div className="absolute bottom-full left-0 right-0 z-30 mb-2 border border-black bg-white p-2 shadow-2xl">
+                            <div className="grid grid-cols-4 gap-1.5">
                                 {SIZES.map((s) => (
                                     <button
                                         key={s}
-                                        onClick={() => { setSelectedSize(s); setSizeOpen(false); setSizeError(false); }}
-                                        className={`
-                                            py-1 sm:py-1.5
-                                            text-[8px] sm:text-[9px] font-black tracking-wide
-                                            transition-all duration-150
-                                            ${selectedSize === s
-                                            ? 'bg-zinc-900 text-white'
-                                            : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-900 hover:text-white'
-                                        }
-                                        `}
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedSize(s);
+                                            setSizeOpen(false);
+                                            setSizeError(false);
+                                        }}
+                                        className={`h-9 text-xs font-black ${
+                                            selectedSize === s
+                                                ? "bg-black text-white"
+                                                : "bg-zinc-100 text-black hover:bg-black hover:text-white"
+                                        }`}
                                     >
                                         {s}
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-[7px] sm:text-[8px] text-zinc-400 text-center mt-1.5 tracking-widest uppercase">
-                                UK / SA Sizing
-                            </p>
                         </div>
                     )}
                 </div>
 
-                {/* Colour swatches + Add to Bag */}
-                <div className="flex items-center justify-between gap-2">
+                <button
+                    type="button"
+                    onClick={handleAdd}
+                    disabled={isSoldOut}
+                    className={`mt-3 flex h-12 w-full items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${
+                        added
+                            ? "bg-zikiano-signal text-black"
+                            : isSoldOut
+                              ? "bg-zinc-200 text-zinc-400"
+                              : "bg-black text-white hover:bg-zikiano-signal hover:text-black"
+                    }`}
+                >
+                    {added ? <Check size={16} /> : <ShoppingBag size={16} />}
+                    {added ? "Added" : isSoldOut ? "Sold out" : "Add to bag"}
+                </button>
+            </div>
 
-                    {/* Swatches — smaller dots on mobile */}
-                    <div className="flex gap-1.5 sm:gap-2.5 flex-wrap">
-                        {group.variants.map((v, i) => (
+            {zoomOpen && currentView && (
+                <div
+                    className="fixed inset-0 z-[80] flex flex-col bg-black text-white"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`${group.modelName} zoom viewer`}
+                >
+                    <div className="flex h-16 items-center justify-between border-b border-white/10 px-4 sm:px-6">
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-black uppercase tracking-tight">{group.modelName}</p>
+                            <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">
+                                {variant.colourLabel} / {currentView.view}
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
                             <button
-                                key={v.colourKey}
-                                title={v.colourLabel}
-                                onClick={(e) => { e.stopPropagation(); setColourIdx(i); setViewIdx(0); }}
-                                className={`
-                                    w-3 h-3 sm:w-3.5 sm:h-3.5
-                                    rounded-full border border-zinc-200 transition-all
-                                    ${i === colourIdx
-                                    ? 'scale-125 border-zinc-900 ring-1 ring-zinc-900 ring-offset-1 sm:ring-offset-2'
-                                    : 'hover:scale-110'
-                                }
-                                `}
-                                style={{ backgroundColor: v.colourHex }}
-                            />
-                        ))}
+                                type="button"
+                                onClick={() => setZoomScale((s) => Math.max(1, Number((s - 0.25).toFixed(2))))}
+                                className="flex h-10 w-10 items-center justify-center border border-white/20 transition-colors hover:bg-white hover:text-black"
+                                aria-label="Zoom out"
+                            >
+                                <Minus size={17} />
+                            </button>
+                            <span className="hidden min-w-14 text-center text-[10px] font-black uppercase tracking-[0.16em] text-white/55 sm:inline">
+                                {Math.round(zoomScale * 100)}%
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setZoomScale((s) => Math.min(2.5, Number((s + 0.25).toFixed(2))))}
+                                className="flex h-10 w-10 items-center justify-center border border-white/20 transition-colors hover:bg-white hover:text-black"
+                                aria-label="Zoom in"
+                            >
+                                <Plus size={17} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setZoomOpen(false)}
+                                className="ml-1 flex h-10 w-10 items-center justify-center bg-white text-black transition-colors hover:bg-zikiano-signal"
+                                aria-label="Close zoom viewer"
+                            >
+                                <X size={19} />
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Add to bag — compact on mobile */}
-                    <button
-                        onClick={handleAdd}
-                        className={`
-                            shrink-0 font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]
-                            text-[7px] sm:text-[9px]
-                            py-1.5 px-2.5 sm:py-2 sm:px-4
-                            rounded-full border transition-all duration-200
-                            ${added
-                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                            : 'bg-white text-zinc-900 border-zinc-200 hover:bg-black hover:text-white hover:border-black active:scale-95'
-                        }
-                        `}
-                    >
-                        {added ? '✓ Added' : 'Add to Bag'}
-                    </button>
+                    <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto p-4 sm:p-8">
+                        {views.length > 1 && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewIdx((p) => (p - 1 + views.length) % views.length)}
+                                    className="absolute left-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center bg-white/90 text-black transition-colors hover:bg-zikiano-signal sm:left-6"
+                                    aria-label="Previous product image"
+                                >
+                                    <ChevronLeft size={22} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewIdx((p) => (p + 1) % views.length)}
+                                    className="absolute right-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center bg-white/90 text-black transition-colors hover:bg-zikiano-signal sm:right-6"
+                                    aria-label="Next product image"
+                                >
+                                    <ChevronRight size={22} />
+                                </button>
+                            </>
+                        )}
+
+                        <img
+                            src={currentView.imageUrl}
+                            alt={`${group.modelName} ${variant.colourLabel} enlarged`}
+                            className="max-h-[78vh] max-w-full object-contain transition-transform duration-200"
+                            style={{ transform: `scale(${zoomScale})` }}
+                        />
+                    </div>
+
+                    {views.length > 1 && (
+                        <div className="flex gap-2 overflow-x-auto border-t border-white/10 p-3 sm:justify-center">
+                            {views.map((view, i) => (
+                                <button
+                                    key={`zoom-${view.id}`}
+                                    type="button"
+                                    onClick={() => {
+                                        setViewIdx(i);
+                                        setZoomScale(1);
+                                    }}
+                                    className={`relative h-16 w-16 shrink-0 overflow-hidden border ${
+                                        i === viewIdx ? "border-white" : "border-white/20 opacity-60 hover:opacity-100"
+                                    }`}
+                                    aria-label={`View ${view.view}`}
+                                >
+                                    <img src={view.imageUrl} alt="" className="h-full w-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
-            </div>
-        </div>
+            )}
+        </article>
     );
 }
 
 export default function ShoeCard({ group }: { group: ModelGroup }) {
     return (
-        <Suspense fallback={
-            <div className="flex flex-col overflow-hidden rounded-sm border border-zinc-100">
-                <div className="aspect-[4/3] sm:aspect-square bg-zinc-100 animate-pulse" />
-                <div className="p-3 space-y-2">
-                    <div className="h-2 bg-zinc-100 rounded animate-pulse w-1/2" />
-                    <div className="h-3 bg-zinc-100 rounded animate-pulse w-3/4" />
-                    <div className="h-2 bg-zinc-100 rounded animate-pulse w-1/3" />
+        <Suspense
+            fallback={
+                <div className="flex flex-col overflow-hidden bg-white">
+                    <div className="aspect-[4/5] animate-pulse bg-zikiano-stone" />
+                    <div className="border-x border-b border-black/10 p-4">
+                        <div className="h-3 w-1/3 animate-pulse bg-zinc-100" />
+                        <div className="mt-3 h-4 w-2/3 animate-pulse bg-zinc-100" />
+                        <div className="mt-5 h-11 animate-pulse bg-zinc-100" />
+                    </div>
                 </div>
-            </div>
-        }>
+            }
+        >
             <CardContent group={group} />
         </Suspense>
     );

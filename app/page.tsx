@@ -39,31 +39,42 @@ export default async function Home() {
     const totalColourways = groups.reduce((acc, g) => acc + g.variants.length, 0);
 
     return (
-        <div className="min-h-screen bg-zinc-50">
+        <div className="min-h-screen bg-white">
             <HeroSlider images={allHeroImages} />
 
-            {/* Section header */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-14 pb-1">
-                <p className="text-[8px] sm:text-[9px] font-black tracking-[0.35em] text-zinc-400 uppercase mb-1">
-                    The Collection
-                </p>
-                <h2 className="text-xl sm:text-4xl font-black italic tracking-tighter text-zinc-900 leading-none">
-                    All Shoes
-                </h2>
-                <p className="text-[9px] sm:text-xs text-zinc-400 font-medium mt-1">
-                    {groups.length} models &nbsp;·&nbsp; {totalColourways} colourways
+            <section className="border-b border-black/10 bg-white">
+                <div className="premium-container grid gap-0 md:grid-cols-3">
+                    {[
+                        ["Footwear", "Handmade in South Africa with premium supplied fruit leather."],
+                        ["Bags", "Future handmade drops for travel, training, and street carry."],
+                        ["Clothing", "The next layer of the South African Zikiano label."],
+                    ].map(([title, body]) => (
+                        <div key={title} className="border-black/10 py-7 md:border-r md:px-8 md:first:pl-0 md:last:border-r-0">
+                            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-zinc-400">
+                                Category
+                            </p>
+                            <h2 className="text-2xl font-black uppercase tracking-tight text-black">{title}</h2>
+                            <p className="mt-2 max-w-xs text-sm font-medium leading-6 text-zinc-500">{body}</p>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <div className="premium-container flex flex-col gap-5 px-0 pb-4 pt-14 sm:flex-row sm:items-end sm:justify-between sm:pt-20">
+                <div>
+                    <p className="mb-3 text-[10px] font-black uppercase tracking-[0.32em] text-zinc-400">
+                        Latest collection
+                    </p>
+                    <h2 className="text-4xl font-black uppercase leading-none tracking-tight text-zinc-950 sm:text-6xl">
+                        Shop Footwear
+                    </h2>
+                </div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    {groups.length} models / {totalColourways} colourways
                 </p>
             </div>
 
-            {/*
-        Mobile:  2 columns — professional boutique grid, cards are compact
-                 gap-2 keeps them tight like a lookbook
-        Tablet:  2 columns with more breathing room
-        Desktop: 3 columns
-      */}
-            <div className="max-w-7xl mx-auto px-2 sm:px-6 py-4 sm:py-10
-                      grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3
-                      gap-2 sm:gap-6 lg:gap-8">
+            <div className="premium-container grid grid-cols-2 gap-2 pb-16 sm:gap-5 sm:pb-24 lg:grid-cols-3 xl:gap-6">
                 {groups.map((group) => (
                     <ShoeCard key={group.modelKey} group={group} />
                 ))}

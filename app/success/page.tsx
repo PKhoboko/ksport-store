@@ -19,12 +19,12 @@ export default function SuccessPage() {
             <div className="w-24 h-24 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-8 animate-bounce">
                 <CheckCircle size={48} />
             </div>
-            <h1 className="text-5xl font-black italic uppercase tracking-tighter mb-4">Payment Received</h1>
+            <h1 className="mb-4 text-5xl font-black uppercase tracking-tight">Payment Received</h1>
             <p className="text-zinc-500 font-bold uppercase text-[10px] tracking-[0.3em] mb-12">
-                ZIKIANO Order Confirmed • Check your email for GPS tracking
+                ZIKIANO order received through Paystack
             </p>
 
-            <Link href="/" className="group flex items-center gap-3 bg-black text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-zinc-800 transition-all">
+            <Link href="/" className="group flex items-center gap-3 bg-black px-10 py-5 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-zinc-800">
                 <Home size={16} />
                 Back to Collection
             </Link>

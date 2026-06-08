@@ -1,0 +1,39 @@
+<svg width="420" height="108" viewBox="0 0 420 108" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Zikiano OutBack</title>
+  <desc id="desc">Zikiano OutBack South African handmade goods logo</desc>
+  <defs>
+    <linearGradient id="leather" x1="0" y1="0" x2="420" y2="108" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DCA044"/>
+      <stop offset="0.45" stop-color="#B87324"/>
+      <stop offset="1" stop-color="#F0BE63"/>
+    </linearGradient>
+    <filter id="grain" x="-5%" y="-20%" width="110%" height="140%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.18"/>
+      </feComponentTransfer>
+      <feBlend mode="multiply" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect width="420" height="108" rx="2" fill="url(#leather)"/>
+  <rect width="420" height="108" rx="2" fill="url(#leather)" filter="url(#grain)" opacity="0.45"/>
+  <g transform="translate(8 10)">
+    <circle cx="44" cy="44" r="42" fill="#DCA044" stroke="#050505" stroke-width="2.4"/>
+    <circle cx="44" cy="44" r="35" stroke="#050505" stroke-width="1.2"/>
+    <path d="M44 18C49.7 25.5 51.5 32.5 44 41C36.5 32.5 38.3 25.5 44 18Z" fill="#050505"/>
+    <path d="M25 37C35.5 36.6 41.8 41.1 43.8 52.2C32.1 52.5 26.9 46.9 25 37Z" fill="#050505"/>
+    <path d="M63 37C52.5 36.6 46.2 41.1 44.2 52.2C55.9 52.5 61.1 46.9 63 37Z" fill="#050505"/>
+    <path d="M19 23C25.5 29.5 28.4 38 25 53C16.6 43.3 14.2 33.1 19 23Z" stroke="#050505" stroke-width="5" stroke-linecap="round"/>
+    <path d="M69 23C62.5 29.5 59.6 38 63 53C71.4 43.3 73.8 33.1 69 23Z" stroke="#050505" stroke-width="5" stroke-linecap="round"/>
+    <path d="M24 65H68" stroke="#050505" stroke-width="2"/>
+    <text x="44" y="72" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="5" fill="#050505">1864</text>
+  </g>
+  <g transform="translate(112 25)">
+    <text x="0" y="39" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="700" letter-spacing="9" fill="#050505">ZIKIANO</text>
+    <path d="M3 55H161" stroke="#050505" stroke-width="1"/>
+    <path d="M177 55H318" stroke="#050505" stroke-width="1"/>
+    <rect x="166" y="51" width="8" height="8" transform="rotate(45 166 51)" fill="#050505"/>
+    <text x="2" y="78" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="900" letter-spacing="8" fill="#050505">OUTBACK</text>
+  </g>
+</svg>

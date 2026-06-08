@@ -1,0 +1,52 @@
+<svg width="900" height="600" viewBox="0 0 900 600" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Zikiano OutBack</title>
+  <desc id="desc">Zikiano OutBack South African handmade goods logo</desc>
+  <defs>
+    <linearGradient id="leather" x1="80" y1="40" x2="820" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DCA044"/>
+      <stop offset="0.42" stop-color="#B87324"/>
+      <stop offset="1" stop-color="#E9B257"/>
+    </linearGradient>
+    <filter id="grain" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="3" seed="8"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.22"/>
+      </feComponentTransfer>
+      <feBlend mode="multiply" in2="SourceGraphic"/>
+    </filter>
+    <path id="topArc" d="M 314 196 A 136 136 0 0 1 586 196"/>
+    <path id="bottomArc" d="M 592 214 A 142 142 0 0 1 308 214"/>
+  </defs>
+
+  <rect width="900" height="600" fill="url(#leather)"/>
+  <rect width="900" height="600" fill="url(#leather)" filter="url(#grain)" opacity="0.55"/>
+
+  <g fill="#070707" stroke="#070707">
+    <circle cx="450" cy="205" r="156" fill="none" stroke-width="8"/>
+    <circle cx="450" cy="205" r="141" fill="none" stroke-width="3"/>
+    <text font-family="Georgia, 'Times New Roman', serif" font-size="47" font-weight="700" letter-spacing="8" fill="#070707" stroke="none">
+      <textPath href="#topArc" startOffset="50%" text-anchor="middle">ZIKIANO</textPath>
+    </text>
+    <text font-family="Inter, Arial, sans-serif" font-size="31" font-weight="900" letter-spacing="9" fill="#070707" stroke="none">
+      <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">OUTBACK</textPath>
+    </text>
+    <path d="M450 126C468 150 474 172 450 198C426 172 432 150 450 126Z" fill="#070707" stroke="none"/>
+    <path d="M388 183C421 181 442 196 449 233C411 234 394 216 388 183Z" fill="#070707" stroke="none"/>
+    <path d="M512 183C479 181 458 196 451 233C489 234 506 216 512 183Z" fill="#070707" stroke="none"/>
+    <path d="M356 151C376 171 386 199 375 249C348 217 340 184 356 151Z" fill="none" stroke-width="16" stroke-linecap="round"/>
+    <path d="M544 151C524 171 514 199 525 249C552 217 560 184 544 151Z" fill="none" stroke-width="16" stroke-linecap="round"/>
+    <text x="450" y="288" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="900" letter-spacing="13" fill="#070707" stroke="none">1864</text>
+    <path d="M391 309H435" stroke-width="4"/>
+    <circle cx="450" cy="309" r="5" fill="#070707" stroke="none"/>
+    <path d="M465 309H509" stroke-width="4"/>
+  </g>
+
+  <g fill="#070707">
+    <text x="450" y="465" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="98" font-weight="700" letter-spacing="19">ZIKIANO</text>
+    <path d="M236 505H434" stroke="#070707" stroke-width="3"/>
+    <rect x="450" y="496" width="15" height="15" transform="rotate(45 450 496)"/>
+    <path d="M466 505H664" stroke="#070707" stroke-width="3"/>
+    <text x="450" y="552" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="900" letter-spacing="15">HANDMADE IN SOUTH AFRICA</text>
+  </g>
+</svg>

@@ -2,24 +2,9 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/superbase";
 import { Trash2, CreditCard, Loader2, MapPin, Package, ChevronRight } from "lucide-react";
-import { sendOrderEmail } from "@/app/actions/sendOrderEmail";
-
-// PayPal server action – you'll need to create this
-import { verifyPayPalOrder } from "@/app/actions/paypal";
-
-// Dynamically import PayPal button (client‑only)
-const PayPalButton = dynamic(() => import("@/src/components/PayPalButton"), {
-    ssr: false,
-    loading: () => (
-        <div className="w-full py-4 flex justify-center">
-            <Loader2 className="animate-spin" />
-        </div>
-    ),
-});
 
 const POSTNET_BRANCHES = [
     { code: "CPT001", name: "Cape Town CBD" },
@@ -39,7 +24,7 @@ const PROVINCES = [
 
 export default function CartClient() {
     const router = useRouter();
-    const { cart, removeFromCart, clearCart } = useStore();
+    const { cart, removeFromCart } = useStore();
     const [user, setUser] = useState<{ email: string } | null>(null);
     const [authReady, setAuthReady] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -69,8 +54,8 @@ export default function CartClient() {
 
     function deliveryString() {
         return deliveryMethod === "address"
-            ? `🏠 Home Delivery: ${street}, ${city}, ${province}, ${postal}`
-            : `📦 PostNet: ${branch.name} (${branch.code})`;
+            ? `Home Delivery: ${street}, ${city}, ${province}, ${postal}`
+            : `PostNet: ${branch.name} (${branch.code})`;
     }
 
     function validateDelivery() {
@@ -87,68 +72,74 @@ export default function CartClient() {
         setTimeout(() => document.getElementById("delivery-form")?.scrollIntoView({ behavior: "smooth" }), 100);
     }
 
-    async function handlePayPalSuccess(details: any) {
+    async function handlePaystackCheckout() {
+        const err = validateDelivery();
+        if (err) {
+            setDeliveryError(err);
+            return;
+        }
+
         try {
             setLoading(true);
-            const orderId = details.id;
+            const response = await fetch("/api/create-checkout-session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    items: cart,
+                    email: user?.email || "",
+                    customer: {
+                        name: customerName,
+                        phone: customerPhone,
+                        delivery: deliveryString(),
+                    },
+                }),
+            });
+            const data = await response.json();
 
-            // Verify with your backend
-            const result = await verifyPayPalOrder(orderId, cart, user?.email || "");
-
-            if (!result.success) {
-                alert("Payment verification failed. Please contact support.");
+            if (!response.ok || !data.url) {
+                setDeliveryError(data.error || "Paystack checkout could not be started.");
                 return;
             }
 
-            // Send confirmation email
-            await sendOrderEmail({
-                ref: orderId,
-                customerName,
-                customerEmail: user?.email || "",
-                customerPhone,
-                items: cart.map((i) => ({
-                    name: i.name,
-                    price: i.price,
-                    quantity: i.quantity || 1,
-                    sizes: i.sizes,
-                })),
-                total: totalAmount,
-                delivery: deliveryString(),
-            });
-
-            clearCart();
-            router.push("/success");
+            window.location.href = data.url;
         } catch (err) {
-            console.error("Payment Error:", err);
+            console.error("Paystack checkout error:", err);
+            setDeliveryError("Payment could not be started. Please try again.");
         } finally {
             setLoading(false);
         }
     }
 
     return (
-        <div className="p-4 md:p-12 max-w-6xl mx-auto min-h-screen">
-            <h1 className="text-3xl font-bold mb-10 uppercase tracking-tighter italic">Your Cart</h1>
+        <div className="premium-container min-h-screen py-8 sm:py-14">
+            <div className="mb-10 flex flex-col gap-3 border-b border-black/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Secure bag</p>
+                    <h1 className="text-5xl font-black uppercase leading-none tracking-tight sm:text-7xl">Your Cart</h1>
+                </div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Paystack checkout only</p>
+            </div>
 
             {cart.length === 0 ? (
-                <div className="text-center py-24 border-t border-black">
-                    <p className="text-gray-400 uppercase tracking-widest">Your bag is empty.</p>
+                <div className="border border-black/10 py-24 text-center">
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-zinc-400">Your bag is empty.</p>
                     <button
                         onClick={() => router.push("/")}
-                        className="mt-6 text-black border-b border-black pb-1 hover:text-gray-500 hover:border-gray-500 transition-all"
+                        className="mt-6 border-b border-black pb-1 text-xs font-black uppercase tracking-[0.18em] text-black transition-colors hover:text-zinc-500"
                     >
                         CONTINUE SHOPPING
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+                <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-16">
                     {/* LEFT: cart items */}
                     <div className="lg:col-span-2 space-y-10">
                         {cart.map((item) => (
                             <div
                                 key={item.id}
-                                className="flex flex-col sm:flex-row items-start gap-8 border-b border-gray-100 pb-10"
+                                className="flex flex-col items-start gap-6 border-b border-black/10 pb-8 sm:flex-row"
                             >
-                                <div className="w-full sm:w-40 h-40 bg-[#f9f9f9] flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-100">
+                                <div className="flex h-44 w-full flex-shrink-0 items-center justify-center overflow-hidden bg-zikiano-stone sm:w-40">
                                     <img
                                         src={item.image_url}
                                         alt={item.name}
@@ -162,16 +153,16 @@ export default function CartClient() {
                                 <div className="flex-grow">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <h2 className="font-black text-xl uppercase leading-none mb-1">
+                                            <h2 className="mb-1 text-xl font-black uppercase leading-none tracking-tight">
                                                 {item.name}
                                             </h2>
-                                            <p className="text-gray-400 text-sm tracking-widest mb-4">
+                                            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-400">
                                                 {item.brand || "ZIKIANO"}
                                             </p>
                                         </div>
                                         <button
                                             onClick={() => removeFromCart(item.id)}
-                                            className="bg-black text-white p-2 hover:bg-gray-800 transition-colors"
+                                            className="bg-black p-2 text-white transition-colors hover:bg-zinc-800"
                                         >
                                             <Trash2 size={18} />
                                         </button>
@@ -180,7 +171,7 @@ export default function CartClient() {
                                         <div>
                                             {item.sizes && (
                                                 <p className="text-[10px] font-bold border border-black px-2 py-0.5 inline-block">
-                                                    SIZE: {item.sizes}
+                                                    SIZE: {Array.isArray(item.sizes) ? item.sizes.join(", ") : item.sizes}
                                                 </p>
                                             )}
                                         </div>
@@ -194,8 +185,8 @@ export default function CartClient() {
                     {/* RIGHT: summary + delivery */}
                     <div className="h-fit lg:sticky lg:top-24 space-y-6">
                         {/* Summary */}
-                        <div className="border-2 border-black p-8">
-                            <h2 className="font-black text-2xl uppercase mb-6 italic">Summary</h2>
+                        <div className="border border-black p-6 sm:p-8">
+                            <h2 className="mb-6 text-2xl font-black uppercase tracking-tight">Summary</h2>
                             <div className="space-y-4 border-b border-gray-200 pb-6 mb-6">
                                 <div className="flex justify-between text-gray-500 uppercase text-xs tracking-widest">
                                     <span>Subtotal</span>
@@ -224,7 +215,7 @@ export default function CartClient() {
                             )}
 
                             <button
-                                className="w-full bg-black text-white py-5 font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black border-2 border-black transition-all disabled:bg-gray-200 disabled:border-gray-200 disabled:text-gray-400 flex items-center justify-center gap-3"
+                                className="flex w-full items-center justify-center gap-3 border border-black bg-black py-5 text-xs font-black uppercase tracking-[0.2em] text-white transition-colors hover:bg-zikiano-signal hover:text-black disabled:border-gray-200 disabled:bg-gray-200 disabled:text-gray-400"
                                 disabled={!authReady || !user || cart.length === 0 || loading}
                                 onClick={handleCheckoutClick}
                             >
@@ -241,12 +232,12 @@ export default function CartClient() {
 
                         {/* Delivery form */}
                         {showDelivery && (
-                            <div id="delivery-form" className="border-2 border-black p-8">
-                                <h2 className="font-black text-lg uppercase mb-1 italic tracking-tight">
+                            <div id="delivery-form" className="border border-black p-6 sm:p-8">
+                                <h2 className="mb-1 text-lg font-black uppercase tracking-tight">
                                     Delivery Details
                                 </h2>
                                 <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-6">
-                                    Order sent to our WhatsApp instantly after payment
+                                    Pay securely through Paystack after confirming delivery
                                 </p>
 
                                 <div className="space-y-3 mb-6">
@@ -353,25 +344,15 @@ export default function CartClient() {
                                     </p>
                                 )}
 
-                                {validateDelivery() ? (
-                                    <button
-                                        onClick={() => {
-                                            const err = validateDelivery();
-                                            if (err) setDeliveryError(err);
-                                        }}
-                                        className="w-full bg-black text-white py-4 font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black border-2 border-black transition-all flex items-center justify-center gap-3"
-                                    >
-                                        <CreditCard size={18} />
-                                        CONFIRM DETAILS
-                                        <ChevronRight size={15} />
-                                    </button>
-                                ) : (
-                                    <PayPalButton
-                                        amountZAR={totalAmount}
-                                        onSuccess={handlePayPalSuccess}
-                                        onError={() => alert("Payment failed. Please try again.")}
-                                    />
-                                )}
+                                <button
+                                    onClick={handlePaystackCheckout}
+                                    disabled={loading}
+                                    className="flex w-full items-center justify-center gap-3 border border-black bg-black py-4 text-xs font-black uppercase tracking-[0.2em] text-white transition-colors hover:bg-zikiano-signal hover:text-black disabled:bg-gray-200 disabled:text-gray-400"
+                                >
+                                    {loading ? <Loader2 className="animate-spin" size={18} /> : <CreditCard size={18} />}
+                                    Pay with Paystack
+                                    <ChevronRight size={15} />
+                                </button>
                             </div>
                         )}
                     </div>
