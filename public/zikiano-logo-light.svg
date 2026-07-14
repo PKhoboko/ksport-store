@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 250" role="img" aria-labelledby="title desc">
+  <title id="title">Zikiano 1864 Outback</title>
+  <desc id="desc">Black Zikiano 1864 Outback logo for light backgrounds</desc>
+  <g fill="#050505">
+    <path d="M67 18 258 52l-5 30L62 48z"/>
+    <path d="M33 92h226v31H33z"/>
+    <path d="m46 145 213-25 4 31-213 25z"/>
+    <text x="160" y="213" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="48" font-weight="900" letter-spacing="3">ZIKIANO</text>
+    <text x="160" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" letter-spacing="5">1864 OUTBACK</text>
+    <text x="160" y="248" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="400" letter-spacing="1">MADE IN SOUTH AFRICA</text>
+  </g>
+</svg>

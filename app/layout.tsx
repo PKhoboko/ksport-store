@@ -18,10 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <div className="md:col-span-2">
                     <div className="flex items-center gap-4">
                         <Image
-                            src="/zikiano-logo-dark-compact.jpg"
+                            src="/zikiano-logo-dark.svg"
                             alt="ZIKIANO OUTBACK - South African handmade goods"
-                            width={500}
-                            height={420}
+                            width={320}
+                            height={250}
                             className="h-36 w-auto max-w-full object-contain sm:h-44"
                         />
                     </div>

@@ -78,11 +78,11 @@ export default function Header() {
                         <span className="text-2xl font-black uppercase leading-none tracking-tight">ZIKIANO OUTBACK</span>
                     ) : (
                         <Image
-                            src="/zikiano-logo-light-compact.jpg"
+                            src="/zikiano-logo-light.svg"
                             alt="ZIKIANO OUTBACK - South African handmade goods"
-                            width={410}
-                            height={440}
-                            className="h-16 w-16 object-contain sm:h-[72px] sm:w-[72px]"
+                            width={320}
+                            height={250}
+                            className="h-16 w-[82px] object-contain sm:h-[72px] sm:w-[92px]"
                             priority
                             onError={() => setLogoError(true)}
                         />
@@ -161,11 +161,11 @@ export default function Header() {
                         <div className="flex items-center justify-between border-b border-black/10 pb-5">
                             <span className="flex items-center gap-3">
                                 <Image
-                                    src="/zikiano-logo-light-compact.jpg"
+                                    src="/zikiano-logo-light.svg"
                                     alt="ZIKIANO OUTBACK - South African handmade goods"
-                                    width={410}
-                                    height={440}
-                                    className="h-16 w-16 object-contain"
+                                    width={320}
+                                    height={250}
+                                    className="h-16 w-[82px] object-contain"
                                 />
                             </span>
                             <button
