@@ -102,7 +102,7 @@ function HeroCopy() {
                     ZIKIANO
                 </h1>
                 <p className="mt-7 max-w-xl text-sm font-semibold uppercase leading-6 tracking-[0.14em] text-white/75 sm:text-base">
-                    South African handmade footwear crafted with premium supplied fruit leather. Bags, clothing, and everyday essentials next.
+                    Premium leather footwear, proudly handmade in South Africa. Zikiano—where street-style meets high fashion.
                 </p>
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                     <Link

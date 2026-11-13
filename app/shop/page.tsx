@@ -30,7 +30,7 @@ export default async function ShopPage() {
                             The Shop
                         </h1>
                         <p className="max-w-md text-sm font-semibold uppercase leading-6 tracking-[0.12em] text-zinc-600">
-                            South African handmade footwear crafted with premium supplied fruit leather.
+                            Thoughtfully crafted in South Africa using high-quality, primarily imported leather and locally sourced materials.
                             Bags and clothing are part of the label roadmap.
                         </p>
                     </div>

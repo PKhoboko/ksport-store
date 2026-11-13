@@ -26,9 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         />
                     </div>
                     <p className="mt-6 max-w-lg text-sm font-semibold uppercase leading-6 tracking-[0.12em] text-white/55">
-                        A South African company creating handmade products with premium fruit leather supplied from Nigeria,
-                        starting with footwear and expanding into bags and clothing.
-                        All customer checkout flows are built around Paystack.
+                        Proudly made in South Africa, Zikiano brings together high-quality leather,
+                        precise craftsmanship, and everyday luxury. Where street-style meets high fashion.
                     </p>
                 </div>
 

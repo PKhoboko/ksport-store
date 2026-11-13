@@ -59,7 +59,7 @@ export default function Header() {
             <div className="bg-black text-white">
                 <div className="premium-container flex h-9 items-center justify-center text-[10px] font-bold uppercase tracking-[0.22em] sm:justify-between">
                     <span>Paystack secure checkout</span>
-                    <span className="hidden sm:inline">South African handmade goods crafted with premium supplied fruit leather.</span>
+                    <span className="hidden sm:inline">Premium leather. South African craftsmanship.</span>
                 </div>
             </div>
 
